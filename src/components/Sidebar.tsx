@@ -82,7 +82,7 @@ export default function Sidebar({ isGuest, isOpen, onCloseMobile, onOpenSettings
         {/* Bottom Profile Section */}
         <div
           onClick={() => setIsProfileOpen(true)}
-          className="p-4 border-t border-slate-700 flex items-center gap-3 cursor-pointer hover:bg-slate-750 transition-colors"
+          className="p-4 border-t border-slate-700 flex items-center gap-3 cursor-pointer hover:bg-slate-700 transition-colors"
         >
           <div className="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center overflow-hidden shrink-0">
             {userAvatar ? (

@@ -23,13 +23,55 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   // Reference to the bottom of the chat for auto-scrolling
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Track the pending mock-response timeout so we can cancel it
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Auto-scroll to bottom whenever messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
+  // Clean up any pending timeout when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Build a mode + settings aware mock reply (replaced by a real AI call later)
+  const buildMockReply = (character: string, userText: string): string => {
+    const filter = localStorage.getItem('profanity_filter') || 'medium';
+    const apiKey = localStorage.getItem('user_api_key');
+    const hasKey = Boolean(apiKey && apiKey.trim());
+
+    const isQuestion = userText.trim().endsWith('?');
+
+    if (hasKey) {
+      // An API key is configured — acknowledge it so the demo feels connected
+      const tone = isQuestion ? "Here's my take on that" : "Got it";
+      const opener =
+        filter === 'off'
+          ? `${tone} — I'm in full "Freedom to Express" mode, so no filters hold me back. I'd say it straight.`
+          : filter === 'strict'
+          ? `${tone} — I'll keep things clean and family-friendly, per your Strict setting.`
+          : `${tone} — I'll keep a light tone as you requested.`;
+      return `${opener}\n\n(Simulated response from your **${character}** character. Real API hookup is the next step.)`;
+    }
+
+    // No API key yet — nudge the user to add one in Settings
+    return `This is a mock response from your **${character}** character.\nTo make me real, add an API key in Settings (⚙️ in the sidebar).`;
+  };
+
   // Handle starting a new chat
   const handleNewChat = () => {
+    // Cancel any pending mock response so it can't leak into the new chat
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    setIsTyping(false);
     setActiveCharacter(null);
     setMessages([]);
     setIsSidebarOpen(false);
@@ -37,31 +79,48 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
   // Handle sending a message
   const handleSend = () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || isTyping) return;
 
     // 1. Add user message to the screen instantly
     const newUserMsg: Message = { id: Date.now().toString(), role: 'user', content: inputText };
+    const character = activeCharacter;
+    const prompt = inputText;
     setMessages(prev => [...prev, newUserMsg]);
     setInputText('');
     setIsTyping(true);
 
     // 2. Mock AI Response (We will replace this with real AI later)
-    setTimeout(() => {
-      const newAiMsg: Message = { 
-        id: (Date.now() + 1).toString(), 
-        role: 'ai', 
-        content: `This is a mock response from your ${activeCharacter} character! Connect an API key later to make me real.` 
+    typingTimeoutRef.current = setTimeout(() => {
+      const newAiMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'ai',
+        content: buildMockReply(character ?? 'AI', prompt),
       };
       setMessages(prev => [...prev, newAiMsg]);
       setIsTyping(false);
+      typingTimeoutRef.current = null;
     }, 1500); // Wait 1.5 seconds to simulate "thinking"
   };
 
-  // Allow sending with the Enter key
+  // Allow sending with the Enter key (respecting the same guards as the button)
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && inputText.trim() && !isTyping) {
       handleSend();
     }
+  };
+
+  // Minimal renderer so **bold** in AI replies is displayed as actual bold text
+  const renderContent = (content: string) => {
+    const parts = content.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) =>
+      part.length > 4 && part.startsWith('**') && part.endsWith('**') ? (
+        <strong key={i} className="font-semibold text-teal-300">
+          {part.slice(2, -2)}
+        </strong>
+      ) : (
+        <span key={i}>{part}</span>
+      )
+    );
   };
 
   return (
@@ -117,7 +176,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                         ? 'bg-teal-600 text-white rounded-tr-sm' 
                         : 'bg-slate-800 border border-slate-700 text-slate-200 rounded-tl-sm shadow-sm'
                     }`}>
-                      <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      <p className="leading-relaxed whitespace-pre-wrap">{renderContent(msg.content)}</p>
                     </div>
 
                   </div>

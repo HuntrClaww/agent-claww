@@ -37,7 +37,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
             <button
               key={mode.id}
               onClick={() => onSelect(mode.id)}
-              className="flex flex-col items-start p-6 bg-slate-800 border border-slate-700 rounded-xl hover:border-teal-500 hover:bg-slate-750 transition-all text-left group"
+              className="flex flex-col items-start p-6 bg-slate-800 border border-slate-700 rounded-xl hover:border-teal-500 hover:bg-slate-700 transition-all text-left group"
             >
               <div className="text-4xl mb-4 group-hover:scale-110 transition-transform">{mode.icon}</div>
               <h3 className="text-xl font-bold text-teal-400 mb-2">{mode.title}</h3>

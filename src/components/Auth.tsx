@@ -1,8 +1,4 @@
-import { useState } from 'react';
-
 export default function Auth({ onLogin, onGuest }: { onLogin: () => void, onGuest: () => void }) {
-    const [email, setEmail] = useState('');
-
     return (
         <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4 font-sans">
             <div className="w-full max-w-md p-8 space-y-6 bg-slate-800 rounded-xl border border-slate-700 shadow-2xl">
