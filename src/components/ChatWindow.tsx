@@ -2,7 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import SettingsModal from './SettingsModal';
 import CharacterSelect from './CharacterSelect';
 import Sidebar from './Sidebar';
-import { Menu } from 'lucide-react';
+import { Menu, AlertCircle, CheckCircle, Zap } from 'lucide-react';
+import { APIClient, detectAPIProvider } from '../lib/apiClient';
+import { validateAPIKey } from '../lib/apiValidator';
 
 // Define what a single message looks like
 interface Message {
@@ -19,87 +21,122 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeCharacter, setActiveCharacter] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  // API status tracking
+  const [apiStatus, setApiStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [apiMessage, setApiMessage] = useState('');
+  const [apiClient, setApiClient] = useState<APIClient | null>(null);
 
   // Reference to the bottom of the chat for auto-scrolling
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Track the pending mock-response timeout so we can cancel it
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Track abort controller for fetch cancellation
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Auto-scroll to bottom whenever messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Clean up any pending timeout when the component unmounts
+  // Clean up abort controller on unmount
   useEffect(() => {
     return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
 
-  // Build a mode + settings aware mock reply (replaced by a real AI call later)
-  const buildMockReply = (character: string, userText: string): string => {
-    const filter = localStorage.getItem('profanity_filter') || 'medium';
-    const apiKey = localStorage.getItem('user_api_key');
-    const hasKey = Boolean(apiKey && apiKey.trim());
+  // Initialize API client when settings change
+  useEffect(() => {
+    const initializeAPI = async () => {
+      const apiKey = localStorage.getItem('user_api_key');
+      if (apiKey && apiKey.trim()) {
+        const provider = await detectAPIProvider(apiKey);
+        if (provider) {
+          setApiClient(new APIClient({ 
+            provider, 
+            apiKey,
+            model: provider === 'anthropic' ? 'claude-opus-4-1' : undefined
+          }));
+          setApiStatus('success');
+          setApiMessage(`Using ${provider} API`);
+        }
+      }
+    };
 
-    const isQuestion = userText.trim().endsWith('?');
+    initializeAPI();
+    window.addEventListener('profileUpdated', initializeAPI);
+    return () => window.removeEventListener('profileUpdated', initializeAPI);
+  }, []);
 
-    if (hasKey) {
-      // An API key is configured — acknowledge it so the demo feels connected
-      const tone = isQuestion ? "Here's my take on that" : "Got it";
-      const opener =
-        filter === 'off'
-          ? `${tone} — I'm in full "Freedom to Express" mode, so no filters hold me back. I'd say it straight.`
-          : filter === 'strict'
-          ? `${tone} — I'll keep things clean and family-friendly, per your Strict setting.`
-          : `${tone} — I'll keep a light tone as you requested.`;
-      return `${opener}\n\n(Simulated response from your **${character}** character. Real API hookup is the next step.)`;
+  // Send real API request
+  const sendAPIRequest = async (userText: string, character: string): Promise<string> => {
+    if (!apiClient) {
+      setApiStatus('error');
+      setApiMessage('No API configured. Add one in Settings.');
+      return 'No API configured. Add one in Settings.';
     }
 
-    // No API key yet — nudge the user to add one in Settings
-    return `This is a mock response from your **${character}** character.\nTo make me real, add an API key in Settings (⚙️ in the sidebar).`;
+    setApiStatus('loading');
+    setApiMessage('Sending to AI...');
+
+    try {
+      abortControllerRef.current = new AbortController();
+      const response = await apiClient.sendMessage(userText, character);
+
+      if (response.success && response.content) {
+        setApiStatus('success');
+        setApiMessage(`Response from ${response.provider || 'AI'}`);
+        return response.content;
+      } else {
+        setApiStatus('error');
+        setApiMessage(response.error || 'Failed to get response from API');
+        return response.error || 'API request failed.';
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Network error';
+      setApiStatus('error');
+      setApiMessage(errorMsg);
+      return `Error: ${errorMsg}`;
+    }
   };
 
   // Handle starting a new chat
   const handleNewChat = () => {
-    // Cancel any pending mock response so it can't leak into the new chat
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
+    // Cancel any pending API request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
     setIsTyping(false);
     setActiveCharacter(null);
     setMessages([]);
     setIsSidebarOpen(false);
+    setApiStatus('idle');
+    setApiMessage('');
   };
 
   // Handle sending a message
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!inputText.trim() || isTyping) return;
 
     // 1. Add user message to the screen instantly
     const newUserMsg: Message = { id: Date.now().toString(), role: 'user', content: inputText };
-    const character = activeCharacter;
+    const character = activeCharacter || 'Assistant';
     const prompt = inputText;
     setMessages(prev => [...prev, newUserMsg]);
     setInputText('');
     setIsTyping(true);
 
-    // 2. Mock AI Response (We will replace this with real AI later)
-    typingTimeoutRef.current = setTimeout(() => {
-      const newAiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'ai',
-        content: buildMockReply(character ?? 'AI', prompt),
-      };
-      setMessages(prev => [...prev, newAiMsg]);
-      setIsTyping(false);
-      typingTimeoutRef.current = null;
-    }, 1500); // Wait 1.5 seconds to simulate "thinking"
+    // 2. Send to real API
+    const aiResponse = await sendAPIRequest(prompt, character);
+    const newAiMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      role: 'ai',
+      content: aiResponse,
+    };
+    setMessages(prev => [...prev, newAiMsg]);
+    setIsTyping(false);
   };
 
   // Allow sending with the Enter key (respecting the same guards as the button)
@@ -139,9 +176,15 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
           <button onClick={() => setIsSidebarOpen(true)} className="text-slate-300 hover:text-white mr-4">
             <Menu size={24} />
           </button>
-          <h1 className="text-lg font-bold text-teal-400 capitalize">
+          <h1 className="text-lg font-bold text-teal-400 capitalize flex-1">
             {activeCharacter || 'New Chat'}
           </h1>
+          {/* Status Indicator */}
+          <div className="flex items-center gap-1 text-xs">
+            {apiStatus === 'success' && <CheckCircle size={16} className="text-green-400" />}
+            {apiStatus === 'error' && <AlertCircle size={16} className="text-red-400" />}
+            {apiStatus === 'loading' && <Zap size={16} className="text-yellow-400 animate-pulse" />}
+          </div>
         </div>
 
         {!activeCharacter ? (
@@ -201,6 +244,20 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
               </div>
             </div>
+
+            {/* API Status Display */}
+            {apiMessage && (
+              <div className={`px-4 py-2 text-xs font-medium flex items-center gap-2 ${
+                apiStatus === 'error' ? 'bg-red-900/20 text-red-300 border-t border-red-700' :
+                apiStatus === 'loading' ? 'bg-yellow-900/20 text-yellow-300 border-t border-yellow-700' :
+                'bg-green-900/20 text-green-300 border-t border-green-700'
+              }`}>
+                {apiStatus === 'error' && <AlertCircle size={14} />}
+                {apiStatus === 'loading' && <Zap size={14} className="animate-pulse" />}
+                {apiStatus === 'success' && <CheckCircle size={14} />}
+                {apiMessage}
+              </div>
+            )}
 
             {/* Input Field */}
             <div className="p-4 border-t border-slate-800 bg-gradient-to-t from-slate-900 to-slate-800">
