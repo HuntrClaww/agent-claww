@@ -164,19 +164,19 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                   <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                     
                     {/* Avatar */}
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 ${
-                      msg.role === 'user' ? 'bg-slate-600 text-slate-200' : 'bg-teal-500 text-slate-900'
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 text-xs ${
+                      msg.role === 'user' ? 'bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg' : 'bg-gradient-to-br from-cyan-500 to-teal-600 text-slate-900 shadow-lg'
                     }`}>
                       {msg.role === 'user' ? 'U' : 'AI'}
                     </div>
 
                     {/* Message Bubble */}
-                    <div className={`p-4 rounded-2xl max-w-[80%] ${
+                    <div className={`p-4 rounded-2xl max-w-[80%] transition-all duration-200 ${
                       msg.role === 'user' 
-                        ? 'bg-teal-600 text-white rounded-tr-sm' 
-                        : 'bg-slate-800 border border-slate-700 text-slate-200 rounded-tl-sm shadow-sm'
+                        ? 'bg-gradient-to-br from-teal-600 to-teal-700 text-white rounded-tr-sm shadow-md hover:shadow-lg' 
+                        : 'bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-600 text-slate-100 rounded-tl-sm shadow-md hover:shadow-lg backdrop-blur-sm'
                     }`}>
-                      <p className="leading-relaxed whitespace-pre-wrap">{renderContent(msg.content)}</p>
+                      <p className="leading-relaxed whitespace-pre-wrap text-sm">{renderContent(msg.content)}</p>
                     </div>
 
                   </div>
@@ -184,14 +184,14 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
                 {/* Typing Indicator */}
                 {isTyping && (
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center font-bold text-slate-900 shrink-0">
+                  <div className="flex gap-4 animate-fade-in">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center font-bold text-slate-900 shrink-0 shadow-lg text-xs">
                       AI
                     </div>
-                    <div className="p-4 rounded-2xl bg-slate-800 border border-slate-700 rounded-tl-sm flex items-center gap-1">
-                      <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-600 rounded-tl-sm flex items-center gap-1.5 shadow-md">
+                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                     </div>
                   </div>
                 )}
@@ -203,20 +203,22 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
             </div>
 
             {/* Input Field */}
-            <div className="p-4 border-t border-slate-800 bg-slate-900">
+            <div className="p-4 border-t border-slate-800 bg-gradient-to-t from-slate-900 to-slate-800">
               <div className="max-w-3xl mx-auto flex gap-2">
-                <input 
-                  type="text" 
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Type your message..." 
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-teal-500 transition-colors placeholder-slate-500 shadow-inner"
-                />
+                <div className="flex-1 relative">
+                  <input 
+                    type="text" 
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type your message..." 
+                    className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-500/30 transition-all placeholder-slate-500 shadow-inner hover:border-slate-500"
+                  />
+                </div>
                 <button 
                   onClick={handleSend}
                   disabled={!inputText.trim() || isTyping}
-                  className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium transition-colors shadow-md"
+                  className="bg-gradient-to-br from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium transition-all shadow-md hover:shadow-lg active:shadow-sm disabled:hover:shadow-md"
                 >
                   Send
                 </button>
