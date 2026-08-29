@@ -1,96 +1,94 @@
-# 🎭 StageEgo - Your AI Performance Coach
+# 🎭 StageEgo - AI Character Chatbot Platform
 
-**StageEgo** is an AI-powered performance coaching platform designed to help you master your presence, refine your delivery, and elevate any performance—whether it's public speaking, acting, improv, debate, or confidence building.
+**StageEgo is a customizable AI character chatbot platform where you can chat with AI agents (Claude/GPT/Gemini) that embody specific character personalities.**
 
----
-
-## 🤔 What Does "StageEgo" Mean?
-
-### The Name Breakdown
-
-**"Stage"** + **"Ego"** = **StageEgo**
-
-#### 🎭 **Stage**
-- Represents the literal stage, spotlight, or platform where performance happens
-- Could be a theater stage, presentation podium, auditorium, or even virtual stage
-- Symbolizes any moment where you're in the spotlight and need to perform at your best
-- Metaphor: *the arena where you showcase your skills, ideas, and authentic self*
-
-#### 🧠 **Ego**
-- NOT a negative connotation of narcissism or arrogance
-- Refers to the psychological "ego" — your conscious self, identity, and presence
-- The part of you that shows up when the spotlight is on
-- In Latin: "ego" = "I am" — your authentic presence and confidence
-- The inner coach, the voice that guides your performance from within
-
-#### 🎯 **The Combined Meaning: StageEgo**
-**Your elevated, authentic self when performing under pressure.**
-
-It's the intersection of:
-1. **The Platform** — where you perform
-2. **Your Presence** — who you are when performing
-3. **Confidence** — the inner strength to shine
-4. **Coaching** — the guidance to improve
-
-*StageEgo helps you become the best version of yourself when it matters most.*
+Choose between two modes:
+- **Generic Mode**: Chat with any character, search character databases, switch characters anytime
+- **Personality Mode**: Lock to one character with access to their full history and let them learn/develop
 
 ---
 
-## ✨ What StageEgo Does
+## The Two-Sided Coin
 
-### Performance Coaching Modes
+### SIDE 1: GENERIC MODE
+**Chat with any character, anytime**
 
-StageEgo offers **6 specialized AI coaching modes**:
+- No character lock - switch freely
+- AI searches internet archives, anime fandoms, character databases
+- User says "Be Sherlock" → AI searches and embodies Sherlock instantly
+- User says "Now be Harley Quinn" → AI switches instantly
+- Each character learned on-demand through searching
+- Perfect for exploring different characters and personalities
 
-#### 🎤 **Presentation Coach**
-- Refine your delivery for pitches, talks, and public speaking
-- Analyze pacing, tone, eye contact, and audience engagement
-- Get real-time feedback on structure and impact
+**Example:**
+```
+User: "Tell me about Sherlock Holmes"
+AI: [Searches character databases] "Sherlock Holmes is..."
 
-#### 🎭 **Acting Coach**
-- Master character development and emotional authenticity
-- Analyze scenes, blocking, and performance techniques
-- Build depth in your character work
+User: "Now roleplay as Sherlock"
+AI: [Integrates personality] "Elementary. What case do you bring me?"
 
-#### ✨ **Improv Buddy**
-- Build confidence through improvisation games
-- Get suggestions for energy, spontaneity, and storytelling
-- Learn to think on your feet
+User: "Switch to Harley Quinn"
+AI: [Searches/switches] "Hiya puddin'! What's up?"
+```
 
-#### 🧠 **Debate Strategist**
-- Sharpen your arguments and rhetoric
-- Get feedback on rebuttals and persuasive techniques
-- Master the art of compelling debate
+### SIDE 2: PERSONALITY MODE
+**Deep roleplay with one locked character**
 
-#### 💪 **Confidence Builder**
-- Overcome stage fright and anxiety
-- Personalized exercises for presence and self-assurance
-- Motivation and psychological preparation
+Choose your character and pick ONE behavioral approach:
 
-#### 🎵 **Voice & Presence Coach**
-- Perfect vocal delivery and projection
-- Guidance on breathing, pacing, and physical presence
-- Develop a commanding stage voice
+#### True-to-Character (Strict)
+- Stays exactly as source material defines
+- Won't acknowledge modern world or break character
+- Example: Victorian Sherlock stays in Victorian London
+
+#### Off-Script / Development (Learning)
+- **Same as Development Mode - they are identical**
+- Character's core personality locked, but can learn and develop
+- Has access to character's full history AND modern information
+- Can break fourth wall, acknowledge AI nature
+- Character evolves through conversation while staying true to core
+
+**Example:**
+```
+True-to-Character:
+User: "What do you think of smartphones?"
+Sherlock: "I haven't the faintest notion what you're referring to."
+
+Off-Script/Development:
+User: "What do you think of smartphones?"
+Sherlock: "Fascinating. A computational device with wireless connectivity. 
+The deductive logic remains the same, though the tools have evolved."
+```
 
 ---
 
 ## 🚀 Key Features
 
-### Real-Time AI Coaching
-- **Multi-Provider Support**: Works with Claude (Anthropic), OpenAI, and Google Gemini
-- **Instant Feedback**: Get analysis and suggestions immediately
-- **Personalized Guidance**: Coaches adapt to your specific goals
+### Multi-Provider AI Support
+- **Anthropic Claude** — Opus 4.1 for depth
+- **OpenAI** — GPT-4o-mini for speed
+- **Google Gemini** — Pro for versatility
+- Auto-detection from API key format
+- Real-time validation and testing
 
-### Privacy & Control
-- **Local Storage**: Guest mode keeps all data on your device
-- **No Tracking**: Your coaching sessions are yours alone
-- **Open Source**: Built with transparency and flexibility
+### Character System
+- Generic mode: Search and learn any character on-demand
+- Personality mode: Deep roleplay with one character
+- Two behavioral options in personality mode
+- Access to internet archives, fandoms, character databases
 
-### Professional UI
-- **Dark Theme Optimized**: Designed for focus and reduced eye strain
-- **Mobile Responsive**: Coach on-the-go
-- **Real-Time Status**: Know which AI provider you're using
-- **Chat History**: Track your progress and review sessions
+### Privacy First
+- Guest mode (no login required)
+- Local storage only (no server transmission)
+- Optional account sync (future)
+- Complete user control
+
+### Safety Built-In
+- AI won't exploit freedom or manipulate
+- Won't impersonate real people
+- Transparent about being AI in character
+- User-defined character constraints enforced
 
 ---
 
@@ -98,9 +96,43 @@ StageEgo offers **6 specialized AI coaching modes**:
 
 - **Frontend**: React 18 + TypeScript + Tailwind CSS
 - **APIs**: Anthropic Claude, OpenAI, Google Gemini
-- **Build Tool**: Vite
-- **Database** (future): Supabase
-- **Styling**: Dark theme with teal/cyan accents
+- **Build**: Vite
+- **Icons**: Lucide React
+- **Theme**: Dark mode optimized with teal/cyan accents
+
+---
+
+## 🔧 Getting Started
+
+### Setup
+
+```bash
+# Clone repo
+git clone https://github.com/HuntrClaww/agent-claww.git stageego
+cd stageego
+
+# Install dependencies
+npm install
+
+# Get API key from:
+# - Anthropic: https://console.anthropic.com
+# - OpenAI: https://platform.openai.com
+# - Google Gemini: https://ai.google.dev
+
+# Start dev server
+npm run dev
+
+# Build for production
+npm run build
+```
+
+### First Time
+
+1. Open app (http://localhost:5173)
+2. Choose: Generic Mode or Personality Mode
+3. Add your API key in Settings
+4. Click "Test Connection"
+5. Start chatting!
 
 ---
 
@@ -110,224 +142,146 @@ StageEgo offers **6 specialized AI coaching modes**:
 stageego/
 ├── src/
 │   ├── components/
-│   │   ├── Auth.tsx              # Login/Guest entry point
+│   │   ├── Auth.tsx              # Login/Guest entry
 │   │   ├── ChatWindow.tsx        # Main chat interface
-│   │   ├── CharacterSelect.tsx   # Coaching mode selection
-│   │   ├── Sidebar.tsx           # Session history & navigation
-│   │   ├── SettingsModal.tsx     # API key & settings management
-│   │   ├── UserProfileModal.tsx  # User profile customization
-│   │   └── SettingsModal.tsx     # Configuration panel
+│   │   ├── CharacterSelect.tsx   # Character/mode selection
+│   │   ├── Sidebar.tsx           # Navigation
+│   │   ├── SettingsModal.tsx     # API key & settings
+│   │   └── UserProfileModal.tsx  # User customization
 │   ├── lib/
-│   │   ├── apiClient.ts          # API integration (Anthropic, OpenAI, Gemini)
-│   │   ├── apiValidator.ts       # API key validation & testing
-│   │   └── supabase.ts           # Future backend integration
+│   │   ├── apiClient.ts          # API integration
+│   │   ├── apiValidator.ts       # Key validation
+│   │   └── supabase.ts           # Future backend
 │   ├── App.tsx                   # Root component
 │   ├── main.tsx                  # Entry point
 │   ├── index.css                 # Base styles
 │   └── vite-env.d.ts             # Type definitions
 ├── index.html                    # HTML entry
 ├── package.json                  # Dependencies
-├── vite.config.ts                # Build configuration
-├── tailwind.config.js            # Tailwind theming
+├── vite.config.ts                # Build config
+├── tailwind.config.js            # Tailwind theme
 ├── tsconfig.json                 # TypeScript config
-├── UI_IMPROVEMENTS_SPEC.md       # Detailed UI roadmap
+├── CORE_VISION.md                # Project vision (READ THIS)
 └── README.md                     # This file
 ```
 
 ---
 
-## 🎯 Core Coaching Concept
+## 💡 How It Works
 
-### How StageEgo Works
+### Generic Mode Flow
+1. User enters Generic Mode
+2. User asks about or requests a character
+3. System searches character databases/fandoms
+4. AI integrates character personality
+5. User can switch to different character anytime
+6. Each switch triggers new search + personality
 
-1. **Choose Your Coach** — Select which performance area you want to improve
-2. **Configure AI** — Add your API key (Claude, OpenAI, or Gemini)
-3. **Describe Your Performance** — Tell the coach what you're working on
-4. **Get Real-Time Feedback** — Receive analysis, suggestions, and improvements
-5. **Refine & Repeat** — Practice, test, and iterate with each coach
-
----
-
-## 💡 Philosophy Behind StageEgo
-
-### Why This Name Makes Sense
-
-| Element | Meaning |
-|---------|---------|
-| **Stage** | Your platform, audience, moment to shine |
-| **Ego** | Your authentic presence, consciousness, confidence |
-| **Together** | Mastering yourself on any stage, in any situation |
-
-### The Psychological Model
-
-StageEgo is built on the idea that **great performance is about:**
-- **Self-awareness** — knowing your strengths and weaknesses
-- **Presence** — being fully engaged in the moment
-- **Confidence** — trusting your preparation and abilities
-- **Continuous improvement** — always getting better through feedback
-
-The AI coaches are your **external mirror**, helping you see yourself as your audience does, so you can optimize your performance.
+### Personality Mode Flow
+1. User selects Personality Mode
+2. User chooses one specific character
+3. User picks behavioral approach (True-to-Char or Off-Script)
+4. Character is locked for session
+5. Character has full historical context
+6. Character can learn/develop (if Off-Script mode)
+7. Session maintains character consistency
 
 ---
 
-## 🔧 Getting Started
+## 🔐 Safety & Responsibility
 
-### Setup (Development)
+### AI Won't:
+- ❌ Pretend to be real person
+- ❌ Claim to have consciousness
+- ❌ Manipulate users
+- ❌ Provide illegal advice
+- ❌ Exploit "free will" given to it
+- ❌ Create unhealthy dependency
 
-```bash
-# Clone the repo
-git clone https://github.com/HuntrClaww/agent-claww.git stageego
-cd stageego
-
-# Install dependencies
-npm install
-
-# Get your API key from:
-# - Anthropic: https://console.anthropic.com
-# - OpenAI: https://platform.openai.com
-# - Google Gemini: https://ai.google.dev
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-```
-
-### First Run
-
-1. Open the app (usually `http://localhost:5173`)
-2. Click "Start as Guest" (or sign in)
-3. Choose a coaching mode
-4. Go to Settings and add your API key
-5. Click "Test API Connection"
-6. Start your coaching session!
+### AI Will:
+- ✅ Stay true to character definition
+- ✅ Refuse requests outside scope
+- ✅ Be transparent about being AI
+- ✅ Acknowledge limitations
+- ✅ Respect user safety always
+- ✅ Follow user-defined constraints
 
 ---
 
-## 📈 Roadmap
+## 📈 Development Roadmap
 
-### Phase 1: Core Functionality ✅
-- [x] Real API integration (Anthropic, OpenAI, Gemini)
-- [x] API key validation & testing
-- [x] Error handling & status indicators
+### Phase 1: Core ✅
+- [x] API integration (3 providers)
+- [x] Real API validation & testing
+- [x] Error handling
 - [x] Guest mode with local storage
+- [x] Core chat interface
+- [x] Character concept framework
 
-### Phase 2: UI Polish 🎨
-- [ ] Enhanced character/coach selection cards
-- [ ] Message timestamps and reactions
-- [ ] Desktop header section
-- [ ] Sidebar chat history grouping
-- [ ] Input character count & formatting
+### Phase 2: Character System (NEXT)
+- [ ] Generic mode character search
+- [ ] Character database/wiki integration
+- [ ] Character switching mechanics
+- [ ] Personality mode implementation
+- [ ] True-to-Character vs Off-Script toggle
+- [ ] Character learning system
 
-### Phase 3: Advanced Features 🚀
-- [ ] Chat persistence & history
-- [ ] Session export (PDF/JSON)
-- [ ] Theme customization
+### Phase 3: Features
+- [ ] Character creation UI
+- [ ] Pre-made character library
+- [ ] Character sharing/forking
+- [ ] Advanced memory management
+- [ ] Conversation export
+- [ ] Character accuracy rating
+
+### Phase 4: Scale
+- [ ] User accounts & cloud sync
+- [ ] Character marketplace
+- [ ] Analytics & usage tracking
 - [ ] Voice input/output
-- [ ] Custom coach creation
-
-### Phase 4: Premium Features 💎
-- [ ] Cloud sync with authentication
-- [ ] Performance analytics
-- [ ] Progress tracking
-- [ ] Coach comparison mode
+- [ ] Mobile native apps
 - [ ] Community templates
 
 ---
 
-## 🎓 Understanding Your Performance
+## 🎬 The Vision
 
-### Key Metrics StageEgo Coaches Can Analyze
+**StageEgo gives you two ways to experience AI characters:**
 
-**For Presentation:**
-- Pacing and timing
-- Vocal variety and projection
-- Audience engagement hooks
-- Story structure and flow
+1. **Generic**: "Let me explore different characters" → Flexibility & discovery
+2. **Personality**: "Let me deeply roleplay one character" → Depth & consistency
 
-**For Acting:**
-- Emotional authenticity
-- Character consistency
-- Physical presence
-- Scene dynamics and chemistry
+Both are equally valid. Both are safe. Both are under your control.
 
-**For Improv:**
-- Yes-and momentum
-- Storytelling coherence
-- Emotional truth
-- Game awareness
-
-**For Debate:**
-- Argument structure
-- Counterargument strength
-- Evidence quality
-- Persuasive techniques
-
-**For Confidence:**
-- Anxiety triggers
-- Presence indicators
-- Energy management
-- Mental resilience
-
----
-
-## 🔐 Privacy & Security
-
-### Guest Mode (Default)
-- ✅ All data stored locally on your device
-- ✅ No server transmission
-- ✅ No account required
-- ✅ Complete privacy
-
-### Account Mode (Future)
-- 🔒 Optional cloud sync
-- 🔒 Encrypted sessions
-- 🔒 Your data, your control
-- 🔒 GDPR-compliant
+Whether you want to chat with Sherlock Holmes, explore how Harley Quinn would react to modern life, or create your own original character and see them grow - StageEgo is your platform.
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Areas of interest:
-
-- **New Coaching Modes** — Create specialized coaches for specific performance areas
-- **UI/UX Improvements** — Follow the `UI_IMPROVEMENTS_SPEC.md` guide
-- **API Integrations** — Add support for more AI providers
-- **Documentation** — Help improve guides and tutorials
+Interested in contributing?
+- New character features
+- Database integrations
+- UI/UX improvements
+- API provider support
+- Character-specific enhancements
 
 ---
 
 ## 📝 License
 
-This project is open-source and available under the MIT License.
-
----
-
-## 🎬 The StageEgo Mindset
-
-> *"The stage is not where you prove yourself to others. It's where you discover yourself through performance. StageEgo is your partner in that journey."*
-
-Whether you're:
-- 🎤 Pitching to investors
-- 🎭 Performing on stage
-- 🧠 Debating your ideas
-- ✨ Building confidence
-- 🎵 Finding your voice
-
-**StageEgo is here to help you perform at your best.**
+MIT License - Open source
 
 ---
 
 ## 📧 Support
 
-- **Issues?** Open a GitHub issue
-- **Features?** Submit a discussion or pull request
-- **Feedback?** Tell us what you think!
+- **Issues**: Open a GitHub issue
+- **Features**: Submit a pull request
+- **Questions**: Check CORE_VISION.md for detailed explanation
 
 ---
 
-**Made with 🎭 for everyone who performs under pressure.**
+**For detailed project vision and understanding, see [CORE_VISION.md](./CORE_VISION.md)**
 
-*StageEgo — Master Your Presence. Elevate Your Performance.*
+*🎭 StageEgo: Character AI, Your Way*

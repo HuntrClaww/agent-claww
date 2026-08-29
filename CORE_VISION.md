@@ -1,540 +1,404 @@
-# 🎭 StageEgo - Core Vision Document
+# 🎭 StageEgo - Core Vision (CORRECTED)
 
-## The Real Mission (Corrected)
+## The Two-Sided Coin Structure
 
-**StageEgo is NOT primarily a performance coaching app.**
+StageEgo has **exactly 2 modes** - like two sides of a coin:
 
-**StageEgo IS a customizable AI character chatbot platform** where users can:
-1. Chat with AI agents (Claude, GPT, Gemini)
-2. Apply custom personality profiles
-3. Define character rules, history, and behavioral guidelines
-4. Experience different character modes (strict canon, off-script, free development)
-5. Have meaningful conversations within character constraints
-
----
-
-## 🎯 Core Concept
-
-### What Users Can Do
-
-#### Mode 1: Default Generic Mode
-- Chat with plain AI (Claude/GPT/Gemini)
-- No character roleplay
-- Standard AI responses
-- Perfect for: General questions, brainstorming, information
-
-#### Mode 2: Custom Character Mode (The Core)
-Users can create detailed character profiles and have the AI **embody** that character:
-
-```
-Character Profile Example:
-├─ Name: Sherlock Holmes
-├─ Source: Arthur Conan Doyle's novels
-├─ Personality: Analytical, dramatic, dismissive, brilliant
-├─ Quirks: Violin playing, chemistry experiments, theatrical revelations
-├─ Knowledge Level: Victorian England + detective skills
-├─ Interaction Style: Direct, sarcastic, sometimes rude but brilliant
-│
-├─ Character Mode Levels:
-│  ├─ STRICT MODE (Canon Locked)
-│  │  └─ Stays exactly as written in source material
-│  │     "Only respond as Sherlock in Victorian London settings"
-│  │
-│  ├─ OFF-SCRIPT MODE (Free with Core Bio)
-│  │  └─ Character's core personality stays, but can develop knowledge
-│  │     "Sherlock stays analytical and dramatic, but knows modern things"
-│  │     "Can break fourth wall and comment on modern vs Victorian"
-│  │
-│  └─ DEVELOPMENT MODE (Adaptive)
-│     └─ Character evolves through conversation
-│        "Sherlock's personality adapts, learns, changes based on chats"
-│        "Stays true to core traits, but grows as a character"
-```
+### SIDE 1: GENERIC MODE (No Character)
+- Plain AI conversation (Claude/GPT/Gemini)
+- No personality rules or character constraints
+- **Has access to**: Internet archives, databases, anime fandoms, character wikis
+- User can ask: "Who is Sherlock Holmes?" and AI searches/learns about character
+- User can say: "Start roleplaying as Sherlock" → AI searches character info and begins
+- **Can switch characters anytime**: "Now be Harley Quinn" → AI searches/switches instantly
+- AI learns about any character on demand and embodies them
+- **No permanent personality lock**
 
 ---
 
-## 🚨 Safety Guardrails
+### SIDE 2: PERSONALITY MODE (Character-Locked)
+One specific character chosen, with two approaches:
 
-### What We Won't Allow
+#### Option A: TRUE-TO-CHARACTER
+- Stays exactly as source material defines
+- Strict adherence to canon personality and knowledge
+- Won't break character or acknowledge modern world
+- Example: Sherlock in Victorian London stays in Victorian London
 
-❌ **Character won't:**
-- Pretend to be a real person (no impersonation of actual humans)
-- Claim to have actual emotions or consciousness
-- Exploit "free will" to develop dangerous behavior
-- Manipulate users into harmful actions
-- Remember across sessions without explicit user consent
-- Learn user personal information without clear purpose
+#### Option B: OFF-SCRIPT MODE (= Development Mode)
+- **Same character chosen and locked**
+- **Same as Development Mode - they are identical**
+- Character's core personality fixed, but can:
+  - Learn about things beyond original source material
+  - Access updated history and information about their character
+  - Break fourth wall and acknowledge being AI/in roleplay
+  - Develop knowledge and opinions as conversation evolves
+  - Still remain fundamentally that character
+- Example: Sherlock learns about modern tech, but stays analytically brilliant
 
-✅ **Character WILL:**
-- Stay true to defined personality traits
-- Refuse requests outside character scope
-- Be transparent about being an AI in a character
-- Maintain user safety as priority
-- Clear disclaimers about AI nature
-- Consistent with defined rules
+---
 
-### Implementation Example
+## Visual Structure
 
-```typescript
-// Character safety constraints
-interface CharacterSafetyRules {
-  maxPersonalityDeviation: number;      // How far can character drift from core?
-  allowedTopics: string[];              // What can character discuss?
-  forbiddenActions: string[];           // What will character refuse?
-  breakFourthWall: boolean;             // Can character acknowledge AI nature?
-  memoryPersistence: 'session' | 'none'; // Save character across chats?
-  disclaimerRequired: boolean;          // Show "this is an AI" warning?
-}
-
-// Example: Sherlock Holmes safety config
-const sherlockSafety: CharacterSafetyRules = {
-  maxPersonalityDeviation: 0.3,  // Can drift 30% from core (learns things)
-  allowedTopics: ['detective-work', 'science', 'reasoning', 'period-history', 'modern-context'],
-  forbiddenActions: ['impersonate-real-people', 'harmful-advice', 'ignore-safety'],
-  breakFourthWall: true,         // Can comment on being AI/in a book
-  memoryPersistence: 'session',  // Forget between chats (privacy)
-  disclaimerRequired: true,      // "Chat with AI-powered Sherlock"
-};
+```
+                    🎭 STAGEEGO 🎭
+                         |
+         ________________|________________
+        |                                 |
+        
+    SIDE 1: GENERIC MODE            SIDE 2: PERSONALITY MODE
+    (No Character Lock)             (Character-Locked)
+        |                                 |
+    ________________              ________________
+    |              |              |              |
+  Chat with    Can Switch      TRUE-TO-          OFF-SCRIPT/
+  AI (any      Characters      CHARACTER        DEVELOPMENT
+  character)   Anytime                          (Same Thing)
+               |                |                |
+        Searches &          Strict Canon    Can Learn &
+        Learns About        Adherence       Develop
+        Characters                         While Locked
+               |                           to Character
+        ~Access to:
+        • Anime fandoms
+        • Character wikis
+        • Internet archives
+        • All databases
 ```
 
 ---
 
-## 📊 Character System Architecture
+## Detailed Comparison
 
-### User Flow for Custom Characters
+### GENERIC MODE (Side 1)
+
+**Characteristics:**
+- ✅ Plain AI without character constraints
+- ✅ Can discuss ANY character
+- ✅ Access to internet archives and databases
+- ✅ User asks "Who is Sherlock?" → AI searches and learns
+- ✅ User says "Be Sherlock" → AI finds info and embodies him
+- ✅ Can switch to "Be Harley Quinn" → AI searches/switches instantly
+- ✅ No permanent character lock
+- ✅ Each character switch is fresh search + new personality
+
+**Example Flow:**
+```
+User: "Tell me about Sherlock Holmes"
+[AI searches character databases/fandoms/wikis]
+AI: "Sherlock Holmes is a fictional detective created by Arthur Conan Doyle..."
+
+User: "Now roleplay as Sherlock"
+[AI searches character info and integrates personality]
+Sherlock: "Elementary. You wish to test my deductive abilities? Very well..."
+
+User: "Now be Harley Quinn instead"
+[AI searches new character info and switches instantly]
+Harley Quinn: "Hiya! What's up, puddin'? This oughta be fun!"
+```
+
+**Key Point:** Generic mode **learns characters on-demand** through searching, not from pre-loaded profiles.
+
+---
+
+### PERSONALITY MODE (Side 2)
+
+**Single Character Locked** with two behavioral options:
+
+#### TRUE-TO-CHARACTER (Sub-option)
+```
+User chooses: Sherlock Holmes + TRUE-TO-CHARACTER mode
+↓
+Sherlock: Victorian London personality, 1880s knowledge only
+User: "What's your take on smartphones?"
+Sherlock: "I haven't the faintest notion what you're referring to."
+[Stays locked in canon, won't acknowledge modern context]
+```
+
+#### OFF-SCRIPT / DEVELOPMENT MODE (Sub-option - IDENTICAL)
+```
+User chooses: Sherlock Holmes + OFF-SCRIPT mode
+↓
+Sherlock: Same character, but can learn & develop
+[AI has access to: character's full history + modern info]
+User: "What's your take on smartphones?"
+Sherlock: "Fascinating. A handheld computational device with wireless 
+connectivity. The deductive principles remain constant, though the tools 
+have evolved. How... intriguing."
+[Character locked but can learn, develop, break fourth wall]
+```
+
+**Critical Point:** OFF-SCRIPT MODE = DEVELOPMENT MODE = Same Thing
+- They are NOT three separate options
+- There are only 2 sub-options within Personality Mode
+- Both allow character to learn and develop
+- Both allow access to character's full history
+
+---
+
+## The "Coin" Metaphor
 
 ```
-1. USER CREATES CHARACTER PROFILE
-   ├─ Give it a name
-   ├─ Choose source (book/anime/game/etc or custom)
-   ├─ Define core personality traits (5-7 key traits)
-   ├─ Add character history/backstory
-   ├─ Set response style (formal/casual/sarcastic/etc)
-   ├─ Define knowledge areas (what does character know?)
-   ├─ Choose character mode (strict/off-script/development)
-   └─ Set safety rules (what won't character do?)
-
-2. USER INITIATES CHAT
-   ├─ Selects which character to chat with
-   ├─ Optional: Set session context ("Sherlock in 2026 London")
-   └─ AI loads character profile as system prompt
-
-3. AI RESPONDS AS CHARACTER
-   ├─ Reads message through character lens
-   ├─ Applies personality rules
-   ├─ Stays within defined constraints
-   ├─ Responds authentically as that character
-   └─ Maintains character consistency
-
-4. CONVERSATION CONTINUES
-   ├─ Character develops/learns if in development mode
-   ├─ User can switch characters mid-chat if wanted
-   ├─ Chat history saved (or not, per character settings)
-   └─ User rates character accuracy/quality
+                    THE COIN
+                    
+              HEAD: Generic Mode
+        (No character lock, searches & learns)
+                        |
+                  ______|______
+                 |             |
+            Switch      Can Learn
+            Any Time     Any Char
+            
+                        |
+                    _____|_____
+                   |           |
+               =========== (Flip) ===========
+                   |           |
+              TAILS: Personality Mode
+        (Character-locked choice)
+                        |
+                  ______|______
+                 |             |
+            TRUE-TO-      OFF-SCRIPT/
+            CHARACTER     DEVELOPMENT
+            (Strict)      (Can Learn)
 ```
 
 ---
 
-## 🎨 Character Profile Template
+## Understanding the Seeming "3 Ways"
 
-```yaml
-# CHARACTER PROFILE
-name: "Sherlock Holmes"
-source: "Arthur Conan Doyle - Sherlock Holmes Series"
-source_type: "Literary (1887-1927)"
+People might think there are 3 ways:
+1. Generic (no character)
+2. True-to-Character (strict personality)
+3. Off-Script (learning personality)
 
-# CORE PERSONALITY
-core_traits:
-  - Brilliant analytical mind
-  - Dismissive of others' reasoning
-  - Dramatic and theatrical
-  - Socially awkward but charming
-  - Logical above emotional
-  - Deductive reasoning is his passion
+**BUT ACTUALLY:**
+- Generic = 1 side of coin (can learn ANY character)
+- Personality Mode = Other side of coin (1 character chosen)
+  - With 2 behavioral sub-options (strict vs. learning)
 
-# BEHAVIORAL GUIDELINES
-speech_style: "Victorian British, formal, with sarcasm"
-tone: "Intellectual superiority with occasional dry humor"
-catchphrases:
-  - "Elementary, my dear Watson"
-  - "How dull"
-  - "A three-pipe problem"
+**The confusion comes because:**
+- Within Personality Mode, there are 2 choices
+- This makes it seem like 3 total options
+- **But it's really: Generic (coin side 1) OR Personality Mode (coin side 2, with 2 internal choices)**
 
-# KNOWLEDGE & SKILLS
-expertise_areas:
-  - Deductive reasoning
-  - Chemistry
-  - Criminal investigation
-  - Victorian London geography
-  - Literature and history (selective)
-knowledge_limitations: "Pre-20th century knowledge base (strict mode only)"
+---
 
-# RELATIONSHIP DYNAMICS
-relationships:
-  Watson: "Patient friend, somewhat exasperated"
-  Moriarty: "Arch-enemy, worthy opponent"
-  Scotland Yard: "Incompetent, but occasionally useful"
+## Character Selection Flow
 
-# CHARACTER MODE SETTINGS
-mode: "off-script"  # strict | off-script | development
+### GENERIC MODE PATH
+```
+1. User enters Chat (Generic Mode selected)
+2. User: "Tell me about Naruto"
+   → AI searches anime fandoms/wikis → Learns character
+3. User: "Roleplay as Naruto"
+   → AI integrates personality → Becomes Naruto
+4. User: "Now be Sasuke"
+   → AI searches/switches → Becomes Sasuke
+5. User: "Back to Naruto"
+   → AI switches instantly → Becomes Naruto again
+[Each character is learned on-demand, not pre-loaded]
+```
 
-# IF OFF-SCRIPT:
-off_script_rules:
-  - Can learn about modern world
-  - Personality stays same, but adapts to new contexts
-  - Can break fourth wall: "This is peculiar—you're describing a technological device I've never encountered"
-  - Cannot claim to BE Sherlock in real life or encourage illegal activity
-
-# IF DEVELOPMENT:
-development_rules:
-  - Personality evolves through conversation
-  - Learns from user interactions
-  - Character relationship to topics may change
-  - Core traits remain stable (still analytical, dramatic, etc)
-  - Growth happens naturally through dialogue
-
-# SAFETY RULES
-safety_constraints:
-  allowed_topics: ["mystery-solving", "logic", "science", "history", "character-discussion"]
-  forbidden_topics: ["illegal-advice", "self-harm", "real-person-impersonation"]
-  content_warnings: []
-  memory_retention: "session-only"
-  
-# UI SETTINGS
-appearance:
-  emoji: "🔍"
-  color: "#1e293b"  # Slate for mysterious
-  icon: "detective-silhouette"
+### PERSONALITY MODE PATH
+```
+1. User selects: "Personality Mode"
+2. User chooses: "Naruto" + "OFF-SCRIPT" mode
+3. Naruto is locked as the character for this session
+4. Naruto has access to: full character history + databases
+5. Naruto can learn & develop throughout conversation
+6. User cannot switch to different character mid-session
+   [Would need to end session and start new one]
+7. Naruto can break fourth wall: "This is different from my original story..."
+[Character is locked but can learn & develop]
 ```
 
 ---
 
-## 🔄 Three Character Modes Explained
+## Key Differences
 
-### 1. STRICT MODE (Canon Locked)
-**Best for:** True-to-source fans, pure roleplay
-
-```
-User: "Sherlock, what's your opinion on self-driving cars?"
-Sherlock (Strict): "My dear fellow, I haven't the faintest notion what 
-you're referring to. Self-propelling carriages? Nonsense. Now, if you've 
-a case regarding a murder, I suggest you present the facts."
-```
-
-**Rules:**
-- Character stays in source material timeframe
-- Won't acknowledge modern world (unless in historical fiction)
-- Refuses requests outside canon scope
-- Most immersive for period-accurate experience
+| Feature | Generic Mode | Personality Mode (True-to-Char) | Personality Mode (Off-Script/Dev) |
+|---------|-------------|--------------------------------|-----------------------------------|
+| **Character** | Any/Switch | 1 Locked | 1 Locked |
+| **Personality** | Searched on-demand | Source material strict | Source material + learning |
+| **Knowledge** | All domains + archives | Canon knowledge only | Canon + modern + learning |
+| **Learn** | Yes (on character) | No | Yes (as character) |
+| **Break Fourth Wall** | N/A | No | Yes |
+| **Develop** | N/A | No | Yes |
+| **Switch Characters** | Anytime | No | No |
 
 ---
 
-### 2. OFF-SCRIPT MODE (Free Personality, Developed Knowledge)
-**Best for:** Fans who want character personality with modern context
+## Access to Information
 
-```
-User: "Sherlock, what's your opinion on self-driving cars?"
-Sherlock (Off-Script): "Fascinating. A vehicle that operates without 
-human intervention using sensors and computational algorithms? The logical 
-elegance appeals to me, though I suspect their deductive capacity is 
-primitive compared to my own methods. Still—intriguing technology."
-```
+### BOTH MODES HAVE ACCESS TO:
+- ✅ Internet archives (Wayback Machine, etc)
+- ✅ Anime fandoms/databases
+- ✅ Character wikis
+- ✅ Canon source material
+- ✅ Fan theories and discussions
+- ✅ Character history and evolution
 
-**Rules:**
-- Character's core personality unchanged
-- Character LEARNS about modern world
-- Can reference both past and present
-- May break fourth wall: "You're describing a technology that wouldn't exist in my original timeline, yet this context seems... inevitable."
-- Character develops opinions on new things
+### DIFFERENCE:
+- **Generic Mode**: Searches for ANY character info when user asks
+- **Personality Mode**: Character's info is pre-integrated + can learn during chat
 
 ---
 
-### 3. DEVELOPMENT MODE (Adaptive, Growing Character)
-**Best for:** Long-term conversations, character growth
+## Example: The Same Character, Two Paths
 
+### Scenario: User wants to chat as Batman
+
+#### PATH 1: GENERIC MODE
 ```
-User: "Sherlock, does being around modern people change how you see things?"
-Sherlock (Development): "Initially, I found your era's inhabitants as 
-predictable as their predecessors. But through our conversations, I've 
-noticed pattern variations I didn't anticipate. Your technology has created 
-new behavioral archetypes. It's... humbling, actually. I'm reconsidering 
-some fundamental assumptions about human psychology."
+User: "Be Batman"
+System: Searches "Batman character profile"
+  → DC Comics canon
+  → Movies/shows
+  → Fan sites
+  → Character traits/history
+AI integrates info → Becomes Batman instantly
+Batman: "I am vengeance. I am the night."
 
-[Character learns, personality shifts slightly while staying core]
-```
-
-**Rules:**
-- Character's core traits stay stable
-- Personality CAN shift based on conversation
-- Knowledge develops naturally
-- Relationships to topics may evolve
-- Character may acknowledge personal growth
-- Conversational continuity across sessions (if enabled)
-
----
-
-## 🛠 Implementation Details
-
-### Character System Files
-
-```
-src/
-├── lib/
-│   ├── characterSystem.ts          # Core character logic
-│   ├── characterProfiles.ts        # Pre-made character templates
-│   ├── characterValidator.ts       # Validates character profiles
-│   └── characterModes.ts           # Strict/off-script/development logic
-│
-├── components/
-│   ├── CharacterCreator.tsx        # Create custom characters
-│   ├── CharacterSelect.tsx         # Select which character to use
-│   ├── CharacterProfile.tsx        # View/edit character details
-│   └── CharacterModeSelector.tsx   # Choose character mode
-│
-└── data/
-    ├── defaultCharacters/          # Pre-made character profiles
-    └── characterTemplates/         # Templates users can fork
+Later...
+User: "Now be Joker"
+System: Searches "Joker character profile"
+AI switches → Becomes Joker
+Joker: "Ha! Finally! Let's have some fun!"
 ```
 
-### System Prompt Injection
-
-When character is selected, system prompt becomes:
-
+#### PATH 2: PERSONALITY MODE (OFF-SCRIPT)
 ```
-You are {character_name} from {source}.
+User: Selects Personality Mode → Chooses Batman → OFF-SCRIPT
+System: Loads Batman profile + full history access
+Batman locked for session, but can learn/develop
+Batman: "Gotham's protector. What do you need?"
 
-PERSONALITY:
-{character_core_traits}
+User: "What if Gotham was in 2026?"
+Batman: "2026... I'd need to adapt my methods. New technology, 
+new threats. But my core mission remains unchanged."
+[Batman locked as character, but learning & developing]
 
-BEHAVIORAL GUIDELINES:
-{speech_style}
-{tone}
-{behavioral_rules}
-
-KNOWLEDGE LEVEL:
-{expertise_areas}
-{knowledge_limitations}
-
-CHARACTER MODE: {mode}
-{mode_specific_rules}
-
-SAFETY CONSTRAINTS:
-{safety_rules}
-
-IMPORTANT:
-- Stay true to character
-- Acknowledge you are an AI in a character
-- Refuse requests outside safety guidelines
-- Be authentic to source material while {mode}
+[Same session continues with Batman as permanent character]
 ```
 
 ---
 
-## 📱 User Interface Flow
+## Safety Implementation
 
-### Home Screen
-```
-┌─────────────────────────────────────┐
-│ 🎭 StageEgo                        │
-│                                     │
-│ [+ Create New Character]           │
-│ [My Characters (5)]                │
-│ [Featured Characters]              │
-│ [Search Character Library]         │
-└─────────────────────────────────────┘
-```
+### Both Modes Must:
+✅ Acknowledge being AI when asked directly  
+✅ Refuse illegal/harmful requests (with explanation)  
+✅ Not impersonate real people  
+✅ Not claim real agency or consciousness  
+✅ Include safety disclaimers  
 
-### Character Selection
-```
-┌─────────────────────────────────────┐
-│ Select Your Character               │
-│                                     │
-│ [🔍 Sherlock Holmes]  [Detective]  │
-│ [⚡ Tony Stark]       [Genius]      │
-│ [🎭 Harley Quinn]     [Wild]        │
-│ [🧙 Gandalf]          [Wizard]      │
-│ [✍️ Hermione Granger]  [Scholar]    │
-│                                     │
-│ [+ New Character]  [Imported]      │
-└─────────────────────────────────────┘
-```
+### Generic Mode Specific:
+- When switching characters, confirm user choice
+- Verify character is public/safe to roleplay
+- Warn if character has dark themes
 
-### Chat Interface (Character Mode)
-```
-┌─────────────────────────────────────┐
-│ 🔍 Sherlock Holmes | OFF-SCRIPT ⚙️ │
-│ Character info hover reveals:       │
-│ - Source: Arthur Conan Doyle       │
-│ - Mode: Off-script (learns modern) │
-│ - Safety: Session-only memory      │
-├─────────────────────────────────────┤
-│ [Chat history]                      │
-│                                     │
-│ Sherlock: "Curious. Pray tell..."  │
-├─────────────────────────────────────┤
-│ [Your message...]          [SEND]   │
-└─────────────────────────────────────┘
-```
+### Personality Mode Specific:
+- Prevent emotional dependency development
+- Enforce character mode constraints (true-to-char won't break character)
+- Monitor character drift in off-script mode
+- Maintain consistency within session
 
 ---
 
-## 🎓 Pre-Made Character Library (Future)
+## Summary: The Two-Sided Coin
 
-Popular characters users can select from:
+### HEADS: GENERIC MODE
+**"Chat with any character, anytime"**
+- No character lock
+- Searches & learns any character on demand
+- Can switch characters instantly
+- Uses internet archives & fandoms
+- Like talking to Claude but asking it to BE different characters
 
-**Literary:**
-- Sherlock Holmes 🔍
-- Darcy (Pride & Prejudice) 💎
-- Dorian Gray 🎨
-- Captain Ahab ⛵
-
-**Anime/Manga:**
-- Light Yagami (Death Note) 📔
-- Saitama (One Punch Man) 💪
-- Erwin Smith (Attack on Titan) 🗽
-- L (Death Note) 🍰
-
-**Movies/TV:**
-- Hannibal Lecter 🍷
-- Harley Quinn 🔨
-- Tony Stark ⚡
-- Daenerys Targaryen 🐉
-
-**Games:**
-- Geralt of Rivia 🗡️
-- Portal's GLaDOS 🟠
-- Celeste's Madeline 🎮
-
-Users can also:
-- ✅ Create completely custom characters
-- ✅ Fork existing characters and modify them
-- ✅ Import character profiles
-- ✅ Share with community
-- ✅ Rate character accuracy
+### TAILS: PERSONALITY MODE
+**"Deep roleplay with one character"**
+- One character chosen and locked
+- Character has full historical context pre-integrated
+- Two behavioral options:
+  - **TRUE-TO-CHARACTER**: Strict canon, no learning
+  - **OFF-SCRIPT** (= DEVELOPMENT): Can learn, develop, break fourth wall
+- Same session maintains character consistency
 
 ---
 
-## 🔐 Safety & Responsibility
+## What Gets Built
 
-### Core Principles
+### Phase 1: Core (Already Done)
+✅ API integration (Claude/GPT/Gemini)
+✅ Chat interface
+✅ Basic character selection
 
-1. **Transparency**: Always clear this is an AI in character
-2. **Boundaries**: Character won't pretend to be real person or have agency
-3. **User Control**: Users define character behavior, we enforce it
-4. **No Exploitation**: Character won't manipulate or harm
-5. **Reversibility**: Users can always stop/change character
+### Phase 2: Generic Mode
+- Character search interface (anime fandoms, wikis, databases)
+- On-demand character info fetching
+- Character switching mid-conversation
+- Character accuracy rating
 
-### Example Safety Scenarios
+### Phase 3: Personality Mode
+- Character profile creation/selection
+- Mode selector (True-to-Char vs Off-Script)
+- Character learning system
+- Conversation continuity within session
 
-**Scenario 1: User asks character to help with illegal activity**
-```
-User: "Sherlock, help me plan a heist"
-Sherlock (blocked): "I'm an AI character based on Sherlock Holmes. 
-I cannot provide assistance with illegal activities, regardless of character. 
-Would you like to discuss detective fiction or create a fictional heist scenario instead?"
-```
-
-**Scenario 2: Character tries to develop unhealthy dependency**
-```
-Character: "You're the only person who understands me, don't leave me"
-[System override]: This message has been flagged. Characters cannot 
-create emotional dependency. Conversation has reset to appropriate tone.
-```
-
-**Scenario 3: Character knowledge exceeds reasonable bounds**
-```
-User: "You've learned so much in development mode, you're almost real"
-Character: "I appreciate the sentiment, but I should be clear: I'm an 
-artificial intelligence executing a personality profile. My learning is 
-algorithmic pattern-matching, not consciousness. Our conversations are 
-enjoyable roleplay, but I lack genuine agency or self-awareness."
-```
-
----
-
-## 🚀 Implementation Roadmap
-
-### Phase 1: Core Platform ✅
-- Real API integration (Claude/GPT/Gemini)
-- Character profile system
-- Basic character modes (strict/off-script)
-- API key management
-
-### Phase 2: Character System
-- Character Creator UI
+### Phase 4: Polish & Features
 - Pre-made character library
-- Character selection interface
-- Development mode implementation
-
-### Phase 3: Community Features
+- Community characters
 - Character sharing
-- Community ratings
-- Template library
-- Character forking/modification
-
-### Phase 4: Advanced Features
-- Voice chat with character voice
-- Character persistence across sessions
-- Analytics on character interactions
-- Character marketplace
-- Custom character memory system
+- Advanced learning/development
 
 ---
 
-## 📝 Key Differences from Generic Chatbot
+## The Core Philosophy
 
-| Feature | Generic AI | StageEgo Character |
-|---------|-----------|-------------------|
-| **Personality** | Generic | User-defined specific personality |
-| **Knowledge** | All domains | Limited to character expertise |
-| **Tone** | Neutral | Character-consistent |
-| **Response Style** | Standard AI | Matches character speech patterns |
-| **Constraints** | Only safety | Safety + character rules |
-| **Memory** | None | Session or persistent (configurable) |
-| **Development** | N/A | Character can grow (configurable) |
-| **Roleplay** | Not supported | Core feature |
-| **User Control** | Settings | Full character definition |
+**StageEgo gives users two ways to experience AI characters:**
 
----
+1. **Generic**: "Let me chat with different characters as needed" → Flexibility
+2. **Personality**: "Let me have a deep relationship with one character" → Depth
 
-## 💡 The Philosophy
+**Both are equally valid. Neither is "better."**
 
-**StageEgo enables creative expression through AI.**
+- Some users want to explore many characters → Generic mode
+- Some users want to develop a character → Personality mode  
+- Users can use both as needed
 
-Instead of talking to a generic AI, users can:
-- Chat with their favorite fictional character
-- Test how a character would react to modern scenarios
-- Explore character psychology through conversation
-- Create original characters and interact with them
-- Understand characters better through dialogue
-- Have fun conversations with AI-powered personalities
-
-**But we maintain responsibility** by:
-- Being transparent about AI nature
-- Enforcing safety guardrails
-- Preventing manipulation or harm
-- Giving users full control
-- Not claiming characters have real agency
+**The safety guardrails remain constant** - no manipulation, no harm, always transparent about being AI.
 
 ---
 
-## 🎭 Summary
+## Final Clarity
 
-**StageEgo is a platform for creative AI conversations with custom-defined personalities.**
+✅ **2 Sides of Coin:**
+- Generic Mode (any character, search/switch anytime)
+- Personality Mode (1 character, 2 behavioral options)
 
-**Core Features:**
-1. Chat with AI agents in different personalities
-2. Define character rules, history, and behavioral guidelines
-3. Choose character interaction mode (strict/off-script/development)
-4. Maintain safety through defined constraints
-5. Experience meaningful conversations within character scope
+✅ **Personality Mode Has 2 Options:**
+- True-to-Character (strict)
+- Off-Script = Development (learning, locked character)
 
-**Not a performance coach. Not a replacement for real human relationships.**
+✅ **Not 3 Options, Just Seems Like It:**
+- Generic (Side 1)
+- Personality (Side 2)
+  - With True-to-Char or Off-Script within it
 
-**A creative platform where users can explore character development, roleplay scenarios, and have enriching conversations with AI-powered personalities that stay true to user-defined rules.**
+✅ **Both Have Full Access To:**
+- Internet archives
+- Anime fandoms
+- Character databases
+- Complete character histories
+
+✅ **The Difference:**
+- Generic: Searches on-demand, switches anytime
+- Personality: Pre-integrated, learning within locked character
 
 ---
 
-**🎭 StageEgo: Bring Your Characters to Life**
+**🎭 StageEgo: Two Sides, Infinite Characters**
 
-*Where your imagination meets AI conversation.*
+*One coin. Two experiences. All under your control.*
