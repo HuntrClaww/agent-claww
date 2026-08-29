@@ -58,7 +58,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
       <div className="bg-slate-800 border border-slate-700 w-full max-w-md rounded-xl p-6 shadow-2xl">
-        <h2 className="text-2xl font-bold text-teal-400 mb-6">Settings</h2>
+        <h2 className="text-2xl font-bold text-teal-400 mb-6">🎭 StageEgo Settings</h2>
         
         <div className="space-y-5">
           <div>

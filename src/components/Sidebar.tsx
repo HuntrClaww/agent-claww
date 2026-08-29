@@ -43,7 +43,9 @@ export default function Sidebar({ isGuest, isOpen, onCloseMobile, onOpenSettings
         {/* Top Section */}
         <div className="p-4">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-teal-400">Chats</h2>
+            <h2 className="text-xl font-bold text-teal-400 flex items-center gap-2">
+              <span>🎭</span> Sessions
+            </h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={onOpenSettings}
@@ -63,17 +65,18 @@ export default function Sidebar({ isGuest, isOpen, onCloseMobile, onOpenSettings
           </div>
           <button
             onClick={onNewChat}
-            className="w-full bg-teal-600 hover:bg-teal-500 text-white rounded-md py-2 transition-colors mb-4 font-medium"
+            className="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white rounded-md py-2 transition-all mb-4 font-medium shadow-md hover:shadow-lg"
           >
-            + New Chat
+            + New Session
           </button>
         </div>
 
-        {/* Middle Section (Chat History will go here later) */}
+        {/* Middle Section (Session History will go here later) */}
         <div className="flex-1 overflow-y-auto px-4">
           {isGuest && (
             <div className="p-3 bg-slate-700/50 rounded-lg text-sm text-slate-400 text-center border border-slate-600 mt-4">
-              Guest Mode: Chats save locally. <br />
+              🎭 StageEgo Guest Mode<br />
+              Sessions save locally. <br />
               <span className="text-teal-400 cursor-pointer hover:underline">Create account</span>
             </div>
           )}

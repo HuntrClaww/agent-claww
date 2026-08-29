@@ -7,6 +7,9 @@ function App() {
 
   // --- THEME LOGIC ADDITION ---
   useEffect(() => {
+    // Set page title for StageEgo
+    document.title = 'StageEgo - Your AI Performance Coach';
+
     const applyTheme = () => {
       const theme = localStorage.getItem('theme_preference') || 'dark';
       if (theme === 'dark') {

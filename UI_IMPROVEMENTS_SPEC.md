@@ -1,7 +1,7 @@
-# Agent-Claww UI/UX Improvement Specification
+# StageEgo UI/UX Improvement Specification
 
 ## Vision
-Transform the chat interface from a functional MVP into a **polished, modern AI chat app** with:
+Transform StageEgo from a functional MVP into a **polished, professional AI coaching platform** with:
 - Enhanced visual hierarchy and depth
 - Smooth animations and micro-interactions
 - Better information architecture
