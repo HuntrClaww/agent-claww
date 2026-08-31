@@ -1,16 +1,48 @@
-import { useState } from 'react';
-import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight } from 'lucide-react';
-
-type Behavior = 'true-to-character' | 'off-script';
+import { useState, useEffect } from 'react';
+import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2 } from 'lucide-react';
+import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
+import { createCharacter, listCharacters, deleteCharacter, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode } from '../lib/characterStore';
 
 export default function CharacterSelect({ onSelect }: { onSelect: (mode: string) => void }) {
   const [characterName, setCharacterName] = useState('');
-  const [behavior, setBehavior] = useState<Behavior>('off-script');
+  const [behavior, setBehavior] = useState<BehaviorMode>('off-script');
+  const [saved, setSaved] = useState<SavedCharacter[]>([]);
+  const [forkFromId, setForkFromId] = useState<string | null>(null);
+  const [seedContext, setSeedContext] = useState('');
+  const [isFetching, setIsFetching] = useState(false);
 
-  const handlePersonalityStart = () => {
-    if (!characterName.trim()) return;
-    onSelect(`personality:${behavior}:${characterName.trim()}`);
+  useEffect(() => {
+    const refresh = () => setSaved(listCharacters());
+    refresh();
+    window.addEventListener('charactersUpdated', refresh);
+    return () => window.removeEventListener('charactersUpdated', refresh);
+  }, []);
+
+  const handleUseSaved = (character: SavedCharacter) => {
+    onSelect(`personality:${character.behavior}:${character.name}:${character.id}`);
   };
+
+  const handlePersonalityStart = async () => {
+    const trimmed = characterName.trim();
+    if (!trimmed || isFetching) return;
+
+    setIsFetching(true);
+    const info = await fetchCharacterInfo(trimmed);
+    setIsFetching(false);
+
+    const character = createCharacter({
+      name: trimmed,
+      behavior,
+      summary: info?.summary,
+      source: info ? citationTag(info) : 'user-provided',
+      forkedFrom: forkFromId || undefined,
+      seedContext: forkFromId ? seedContext : undefined,
+    });
+
+    onSelect(`personality:${character.behavior}:${character.name}:${character.id}`);
+  };
+
+  const forkSource = saved.find(c => c.id === forkFromId);
 
   return (
     <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
@@ -70,13 +102,72 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
               <span className="text-[11px] font-semibold uppercase tracking-widest text-amber-400">Side B · Personality</span>
             </div>
             <h3 className="text-xl font-bold text-slate-100 mb-2">One character, locked in</h3>
-            <p className="text-sm text-slate-400 leading-relaxed mb-5">
+            <p className="text-sm text-slate-400 leading-relaxed mb-4">
               Choose a character for this session and pick how strictly they stay in character.
             </p>
 
+            {/* Saved characters (immutable - use or delete only) */}
+            {saved.length > 0 && (
+              <div className="mb-5">
+                <span className="text-xs font-medium text-slate-500 mb-1.5 block">Your characters</span>
+                <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                  {saved.map(c => (
+                    <div
+                      key={c.id}
+                      className="flex items-center gap-2 bg-slate-900/50 border border-slate-700 rounded-lg px-3 py-2 group"
+                    >
+                      <button
+                        onClick={() => handleUseSaved(c)}
+                        className="flex-1 flex items-center gap-2 text-left min-w-0"
+                      >
+                        <span className="text-sm text-slate-200 truncate">{c.name}</span>
+                        <span className="text-[9px] uppercase tracking-wide text-amber-300/70 shrink-0">
+                          {c.behavior === 'true-to-character' ? 'Strict' : 'Off-Script'}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => setForkFromId(c.id)}
+                        title="Fork into a new character"
+                        className="text-slate-500 hover:text-cyan-400 transition-colors shrink-0"
+                      >
+                        <GitFork size={13} />
+                      </button>
+                      <button
+                        onClick={() => deleteCharacter(c.id)}
+                        title="Delete"
+                        className="text-slate-500 hover:text-red-400 transition-colors shrink-0"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Fork banner */}
+            {forkSource && (
+              <div className="mb-4 flex items-start gap-2 bg-cyan-500/5 border border-cyan-500/20 rounded-lg px-3 py-2.5">
+                <GitFork size={14} className="text-cyan-400 mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs text-cyan-300">
+                    Forking from <span className="font-medium">{forkSource.name}</span> — this creates a brand new character.
+                  </p>
+                  <button
+                    onClick={() => { setForkFromId(null); setSeedContext(''); }}
+                    className="text-[11px] text-slate-500 hover:text-slate-300 underline mt-1"
+                  >
+                    Cancel fork
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Character name input */}
             <label className="block mb-3">
-              <span className="text-xs font-medium text-slate-500 mb-1.5 block">Character name</span>
+              <span className="text-xs font-medium text-slate-500 mb-1.5 block">
+                {forkSource ? 'New character name' : 'Character name'}
+              </span>
               <input
                 type="text"
                 value={characterName}
@@ -85,6 +176,25 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                 className="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all"
               />
             </label>
+
+            {/* Seed context, only when forking */}
+            {forkSource && (
+              <label className="block mb-3">
+                <span className="text-xs font-medium text-slate-500 mb-1.5 flex justify-between">
+                  <span>Paste what to carry over (optional)</span>
+                  <span className={seedContext.length > SEED_CONTEXT_LIMIT * 0.9 ? 'text-amber-400' : ''}>
+                    {seedContext.length}/{SEED_CONTEXT_LIMIT}
+                  </span>
+                </span>
+                <textarea
+                  value={seedContext}
+                  onChange={(e) => setSeedContext(e.target.value.slice(0, SEED_CONTEXT_LIMIT))}
+                  placeholder="Paste specific quotes or facts from your old chat — not the whole history."
+                  rows={3}
+                  className="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all resize-none"
+                />
+              </label>
+            )}
 
             {/* Behavior toggle */}
             <div className="mb-5">
@@ -122,12 +232,15 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
 
             <button
               onClick={handlePersonalityStart}
-              disabled={!characterName.trim()}
+              disabled={!characterName.trim() || isFetching}
               className="mt-auto w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-semibold py-3 rounded-xl transition-colors shadow-md hover:shadow-lg disabled:hover:shadow-md"
             >
-              Lock In Character
-              <ArrowRight size={16} />
+              {isFetching ? 'Looking up character...' : 'Lock In Character'}
+              {!isFetching && <ArrowRight size={16} />}
             </button>
+            <p className="text-[11px] text-slate-500 mt-2 text-center">
+              This is permanent — you can delete a character later, but not edit it. To change one, fork it into a new character.
+            </p>
           </div>
         </div>
 

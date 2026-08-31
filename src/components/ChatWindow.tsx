@@ -15,21 +15,26 @@ interface Message {
 }
 
 // Parses the mode string coming out of CharacterSelect:
-//   'generic'                              -> Generic Mode
-//   'personality:off-script:Sherlock Holmes' -> Personality Mode
+//   'generic'                                            -> Generic Mode
+//   'personality:off-script:Sherlock Holmes:char_123_abc' -> Personality Mode
 interface ActiveMode {
   kind: 'generic' | 'personality';
   characterName?: string;
+  characterId?: string;
   behavior?: 'true-to-character' | 'off-script';
 }
 
 function parseMode(raw: string): ActiveMode {
   if (raw === 'generic') return { kind: 'generic' };
-  const [, behavior, ...nameParts] = raw.split(':');
+  const parts = raw.split(':');
+  const [, behavior] = parts;
+  const characterId = parts[parts.length - 1];
+  const characterName = parts.slice(2, -1).join(':');
   return {
     kind: 'personality',
     behavior: behavior as ActiveMode['behavior'],
-    characterName: nameParts.join(':'),
+    characterName,
+    characterId,
   };
 }
 
