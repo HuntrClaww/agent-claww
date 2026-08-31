@@ -4,12 +4,14 @@ import CharacterSelect from './CharacterSelect';
 import Sidebar from './Sidebar';
 import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock } from 'lucide-react';
 import { APIClient, detectAPIProvider } from '../lib/apiClient';
+import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 
 // Define what a single message looks like
 interface Message {
   id: string;
   role: 'user' | 'ai';
   content: string;
+  citation?: string; // e.g. "via Fandom" - shown when character info was fetched
 }
 
 // Parses the mode string coming out of CharacterSelect:
@@ -31,6 +33,15 @@ function parseMode(raw: string): ActiveMode {
   };
 }
 
+// Detects "be X" / "become X" / "switch to X" / "now be X" in Generic Mode
+// messages so the app knows when to fetch character info and re-embody.
+const CHARACTER_SWITCH_PATTERN = /(?:^|\b)(?:now\s+)?(?:be|become|switch\s+to|roleplay\s+as|act\s+as)\s+(.+?)[.!?]*$/i;
+
+function detectCharacterSwitch(message: string): string | null {
+  const match = message.trim().match(CHARACTER_SWITCH_PATTERN);
+  return match ? match[1].trim() : null;
+}
+
 export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -39,6 +50,9 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<ActiveMode | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Generic Mode only: which character the AI is currently embodying
+  const [genericCharacter, setGenericCharacter] = useState<string | null>(null);
   
   // API status tracking
   const [apiStatus, setApiStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -89,7 +103,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   }, []);
 
   // Send real API request
-  const sendAPIRequest = async (userText: string, character: string): Promise<string> => {
+  const sendAPIRequest = async (userText: string, character: string, extraContext?: string): Promise<string> => {
     if (!apiClient) {
       setApiStatus('error');
       setApiMessage('No API configured. Add one in Settings.');
@@ -101,7 +115,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
     try {
       abortControllerRef.current = new AbortController();
-      const response = await apiClient.sendMessage(userText, character);
+      const response = await apiClient.sendMessage(userText, character, extraContext);
 
       if (response.success && response.content) {
         setApiStatus('success');
@@ -128,6 +142,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     }
     setIsTyping(false);
     setActiveMode(null);
+    setGenericCharacter(null);
     setMessages([]);
     setIsSidebarOpen(false);
     setApiStatus('idle');
@@ -140,20 +155,44 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
     // 1. Add user message to the screen instantly
     const newUserMsg: Message = { id: Date.now().toString(), role: 'user', content: inputText };
-    const character = activeMode?.kind === 'personality'
-      ? activeMode.characterName || 'Character'
-      : 'Assistant';
     const prompt = inputText;
     setMessages(prev => [...prev, newUserMsg]);
     setInputText('');
     setIsTyping(true);
 
-    // 2. Send to real API
-    const aiResponse = await sendAPIRequest(prompt, character);
+    // 2. In Generic Mode, detect "be X" / "become X" and fetch character info
+    let character = activeMode?.kind === 'personality'
+      ? activeMode.characterName || 'Character'
+      : genericCharacter || 'Assistant';
+    let extraContext: string | undefined;
+    let citation: string | undefined;
+
+    if (activeMode?.kind === 'generic') {
+      const switchTo = detectCharacterSwitch(prompt);
+      if (switchTo) {
+        setApiStatus('loading');
+        setApiMessage(`Looking up ${switchTo}...`);
+        const info = await fetchCharacterInfo(switchTo);
+        if (info) {
+          character = info.name;
+          extraContext = [info.summary, info.personality, info.background]
+            .filter(Boolean)
+            .join('\n\n');
+          citation = citationTag(info);
+        } else {
+          character = switchTo; // fall back to model's own knowledge, no citation
+        }
+        setGenericCharacter(character);
+      }
+    }
+
+    // 3. Send to real API
+    const aiResponse = await sendAPIRequest(prompt, character, extraContext);
     const newAiMsg: Message = {
       id: (Date.now() + 1).toString(),
       role: 'ai',
       content: aiResponse,
+      citation,
     };
     setMessages(prev => [...prev, newAiMsg]);
     setIsTyping(false);
@@ -196,8 +235,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
           <button onClick={() => setIsSidebarOpen(true)} className="text-slate-300 hover:text-white mr-4">
             <Menu size={24} />
           </button>
-          <ModeTitle mode={activeMode} className="flex-1" />
-          {/* Status Indicator */}
+          <ModeTitle mode={activeMode} genericCharacter={genericCharacter} className="flex-1" />
           <div className="flex items-center gap-1 text-xs">
             {apiStatus === 'success' && <CheckCircle size={16} className="text-green-400" />}
             {apiStatus === 'error' && <AlertCircle size={16} className="text-red-400" />}
@@ -208,7 +246,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
         {/* Desktop Header (only shown once a mode is active) */}
         {activeMode && (
           <div className="hidden md:flex items-center px-6 py-3.5 bg-slate-800/60 border-b border-slate-700/80 backdrop-blur-sm">
-            <ModeTitle mode={activeMode} className="flex-1" />
+            <ModeTitle mode={activeMode} genericCharacter={genericCharacter} className="flex-1" />
             <div className="flex items-center gap-2 text-xs text-slate-400">
               {apiStatus === 'success' && <CheckCircle size={14} className="text-green-400" />}
               {apiStatus === 'error' && <AlertCircle size={14} className="text-red-400" />}
@@ -252,7 +290,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                         ? 'U'
                         : activeMode?.kind === 'personality'
                           ? (activeMode.characterName?.[0] || 'C').toUpperCase()
-                          : 'AI'}
+                          : (genericCharacter?.[0] || 'A').toUpperCase()}
                     </div>
 
                     {/* Message Bubble */}
@@ -262,6 +300,11 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                         : 'bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-600 text-slate-100 rounded-tl-sm shadow-md hover:shadow-lg backdrop-blur-sm'
                     }`}>
                       <p className="leading-relaxed whitespace-pre-wrap text-sm">{renderContent(msg.content)}</p>
+                      {msg.citation && (
+                        <p className="text-[10px] text-slate-500 mt-2 pt-2 border-t border-slate-700/60">
+                          {msg.citation}
+                        </p>
+                      )}
                     </div>
 
                   </div>
@@ -344,16 +387,31 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 }
 
 // Small header label that reflects which side of the coin is active
-function ModeTitle({ mode, className = '' }: { mode: ActiveMode | null; className?: string }) {
+function ModeTitle({
+  mode,
+  genericCharacter,
+  className = '',
+}: {
+  mode: ActiveMode | null;
+  genericCharacter?: string | null;
+  className?: string;
+}) {
   if (!mode) {
     return <h1 className={`text-lg font-bold text-slate-300 ${className}`}>New Chat</h1>;
   }
 
   if (mode.kind === 'generic') {
     return (
-      <div className={`flex items-center gap-2 ${className}`}>
+      <div className={`flex items-center gap-2 min-w-0 ${className}`}>
         <Shuffle size={16} className="text-cyan-400 shrink-0" />
-        <h1 className="text-lg font-bold text-slate-100">Generic Mode</h1>
+        <h1 className="text-lg font-bold text-slate-100 truncate">
+          {genericCharacter || 'Generic Mode'}
+        </h1>
+        {genericCharacter && (
+          <span className="text-[10px] uppercase tracking-wide text-cyan-300/80 bg-cyan-500/10 border border-cyan-500/20 rounded-full px-2 py-0.5 shrink-0">
+            Switchable
+          </span>
+        )}
       </div>
     );
   }
