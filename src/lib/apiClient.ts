@@ -18,7 +18,7 @@ export class APIClient {
     this.config = config;
   }
 
-  async sendMessage(userMessage: string, character: string): Promise<APIResponse> {
+  async sendMessage(userMessage: string, character: string, extraContext?: string): Promise<APIResponse> {
     if (!this.config.apiKey || !this.config.apiKey.trim()) {
       return {
         success: false,
@@ -29,11 +29,11 @@ export class APIClient {
     try {
       switch (this.config.provider) {
         case 'anthropic':
-          return await this.sendToAnthropic(userMessage, character);
+          return await this.sendToAnthropic(userMessage, character, extraContext);
         case 'openai':
-          return await this.sendToOpenAI(userMessage, character);
+          return await this.sendToOpenAI(userMessage, character, extraContext);
         case 'gemini':
-          return await this.sendToGemini(userMessage, character);
+          return await this.sendToGemini(userMessage, character, extraContext);
         default:
           return {
             success: false,
@@ -49,8 +49,8 @@ export class APIClient {
     }
   }
 
-  private async sendToAnthropic(userMessage: string, character: string): Promise<APIResponse> {
-    const systemPrompt = this.buildSystemPrompt(character);
+  private async sendToAnthropic(userMessage: string, character: string, extraContext?: string): Promise<APIResponse> {
+    const systemPrompt = this.buildSystemPrompt(character, extraContext);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -91,8 +91,8 @@ export class APIClient {
     };
   }
 
-  private async sendToOpenAI(userMessage: string, character: string): Promise<APIResponse> {
-    const systemPrompt = this.buildSystemPrompt(character);
+  private async sendToOpenAI(userMessage: string, character: string, extraContext?: string): Promise<APIResponse> {
+    const systemPrompt = this.buildSystemPrompt(character, extraContext);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -132,8 +132,8 @@ export class APIClient {
     };
   }
 
-  private async sendToGemini(userMessage: string, character: string): Promise<APIResponse> {
-    const systemPrompt = this.buildSystemPrompt(character);
+  private async sendToGemini(userMessage: string, character: string, extraContext?: string): Promise<APIResponse> {
+    const systemPrompt = this.buildSystemPrompt(character, extraContext);
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${this.config.apiKey}`,
@@ -177,9 +177,10 @@ export class APIClient {
     };
   }
 
-  private buildSystemPrompt(character: string): string {
+  private buildSystemPrompt(character: string, extraContext?: string): string {
     const basePrompt = `You are an AI assistant named "${character}". Be helpful, concise, and friendly.`;
-    return basePrompt;
+    if (!extraContext) return basePrompt;
+    return `${basePrompt}\n\nReference information about this character (from external sources — use it to inform personality and background, but respond naturally in your own words, not as a recitation):\n${extraContext}`;
   }
 }
 
