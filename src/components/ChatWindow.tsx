@@ -201,13 +201,17 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
         setGenericCharacter(character);
       }
     } else if (activeMode?.kind === 'personality') {
-      // Personality Mode: send the character's stored bio (if any) plus the
-      // emotion-tracking instruction for the portrait panel.
+      // Personality Mode: send the character's stored bio (if any), any
+      // curated fork seed context, plus the emotion-tracking instruction
+      // for the portrait panel.
       const saved = activeMode.characterId ? getCharacter(activeMode.characterId) : undefined;
       const bio = saved
         ? [saved.summary, saved.personality, saved.background].filter(Boolean).join('\n\n')
         : undefined;
-      extraContext = [bio, EMOTION_TAG_INSTRUCTION].filter(Boolean).join('\n\n');
+      const seed = saved?.seedContext
+        ? `Carried over from a previous character by the user's own choice:\n${saved.seedContext}`
+        : undefined;
+      extraContext = [bio, seed, EMOTION_TAG_INSTRUCTION].filter(Boolean).join('\n\n');
     }
 
     // 3. Send to real API
