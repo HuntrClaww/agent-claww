@@ -22,8 +22,9 @@ export interface CharacterInfo {
   confidence: 'high' | 'medium' | 'low';
 }
 
+// Fandom's cross-wiki search API (returns JSON with article snippets)
 const FANDOM_SEARCH_API = (query: string) =>
-  `https://community.fandom.com/wiki/Special:Search?query=${encodeURIComponent(query)}&format=json`;
+  `https://community.fandom.com/api/v1/Search/List?query=${encodeURIComponent(query)}&limit=1&namespaces=0`;
 
 const ANILIST_GRAPHQL = 'https://graphql.anilist.co';
 
@@ -31,22 +32,27 @@ const ANILIST_GRAPHQL = 'https://graphql.anilist.co';
 
 async function fetchFromFandom(name: string): Promise<CharacterInfo | null> {
   try {
-    // Fandom doesn't expose a clean cross-wiki character API, so we hit
-    // the general search endpoint and take the top result's snippet.
     const res = await fetch(FANDOM_SEARCH_API(name));
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[characterFetch] Fandom returned HTTP ${res.status} for "${name}" — falling back`);
+      return null;
+    }
     const data = await res.json();
     const top = data?.items?.[0];
-    if (!top) return null;
+    if (!top) {
+      console.warn(`[characterFetch] Fandom: no results for "${name}" — falling back`);
+      return null;
+    }
 
     return {
       name,
       source: 'Fandom',
       sourceUrl: top.url,
-      summary: top.snippet?.replace(/<[^>]+>/g, '') || '',
+      summary: top.snippet?.replace(/<[^>]+>/g, '').trim() || '',
       confidence: 'high',
     };
-  } catch {
+  } catch (err) {
+    console.warn(`[characterFetch] Fandom fetch failed for "${name}" (likely CORS):`, err, '— falling back to AniList');
     return null;
   }
 }
@@ -69,10 +75,16 @@ async function fetchFromAniList(name: string): Promise<CharacterInfo | null> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, variables: { search: name } }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[characterFetch] AniList returned HTTP ${res.status} for "${name}" — falling back`);
+      return null;
+    }
     const json = await res.json();
     const char = json?.data?.Character;
-    if (!char) return null;
+    if (!char) {
+      console.warn(`[characterFetch] AniList: no character found for "${name}" — falling back`);
+      return null;
+    }
 
     return {
       name: char.name?.full || name,
@@ -81,7 +93,8 @@ async function fetchFromAniList(name: string): Promise<CharacterInfo | null> {
       summary: (char.description || '').slice(0, 600),
       confidence: 'medium',
     };
-  } catch {
+  } catch (err) {
+    console.warn(`[characterFetch] AniList fetch failed for "${name}":`, err, '— falling back to Jikan');
     return null;
   }
 }
@@ -93,10 +106,16 @@ async function fetchFromJikan(name: string): Promise<CharacterInfo | null> {
     const res = await fetch(
       `https://api.jikan.moe/v4/characters?q=${encodeURIComponent(name)}&limit=1`
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[characterFetch] Jikan returned HTTP ${res.status} for "${name}" — all sources exhausted`);
+      return null;
+    }
     const json = await res.json();
     const char = json?.data?.[0];
-    if (!char) return null;
+    if (!char) {
+      console.warn(`[characterFetch] Jikan: no character found for "${name}" — all sources exhausted`);
+      return null;
+    }
 
     return {
       name: char.name || name,
@@ -105,7 +124,8 @@ async function fetchFromJikan(name: string): Promise<CharacterInfo | null> {
       summary: (char.about || '').slice(0, 400),
       confidence: 'low',
     };
-  } catch {
+  } catch (err) {
+    console.warn(`[characterFetch] Jikan fetch failed for "${name}":`, err, '— all sources exhausted, falling back to model knowledge');
     return null;
   }
 }
@@ -122,16 +142,28 @@ export async function fetchCharacterInfo(name: string): Promise<CharacterInfo | 
   const trimmed = name.trim();
   if (!trimmed) return null;
 
+  console.log(`[characterFetch] Starting fetch chain for "${trimmed}"`);
+
   const fandom = await fetchFromFandom(trimmed);
-  if (fandom && fandom.summary) return fandom;
+  if (fandom && fandom.summary) {
+    console.log(`[characterFetch] ✓ Resolved "${trimmed}" from Fandom`);
+    return fandom;
+  }
 
   const anilist = await fetchFromAniList(trimmed);
-  if (anilist && anilist.summary) return anilist;
+  if (anilist && anilist.summary) {
+    console.log(`[characterFetch] ✓ Resolved "${trimmed}" from AniList`);
+    return anilist;
+  }
 
   const jikan = await fetchFromJikan(trimmed);
-  if (jikan && jikan.summary) return jikan;
+  if (jikan && jikan.summary) {
+    console.log(`[characterFetch] ✓ Resolved "${trimmed}" from Jikan/MAL`);
+    return jikan;
+  }
 
-  return null; // caller falls back to web search / model knowledge
+  console.warn(`[characterFetch] ✗ All sources exhausted for "${trimmed}" — caller should use model knowledge only`);
+  return null;
 }
 
 /**
