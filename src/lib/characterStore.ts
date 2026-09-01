@@ -27,11 +27,17 @@ export interface SavedCharacter {
   source?: string;        // e.g. "Fandom", "AniList", "user-provided"
   forkedFrom?: string;    // id of the character this was forked from, if any
   seedContext?: string;   // curated snippets pasted in when forking (capped)
+  portraitUrl?: string;   // data URL for the character's portrait image
   createdAt: number;
 }
 
 const STORAGE_KEY = 'stageego_characters';
 const SEED_CONTEXT_MAX_CHARS = 2000; // keeps forks a curated seed, not a full history dump
+// localStorage typically caps out around 5-10MB total across the whole origin,
+// so a single portrait must stay small. 500KB base64 (~375KB actual image) is
+// a reasonable ceiling for a prototype - a real backend would use object
+// storage instead and lift this entirely.
+const PORTRAIT_MAX_BYTES = 500_000;
 
 function readAll(): SavedCharacter[] {
   try {
@@ -60,10 +66,18 @@ export function getCharacter(id: string): SavedCharacter | undefined {
 /**
  * Creates a new character. This is the ONLY way a character's core
  * fields get set - there is deliberately no updateCharacter().
+ *
+ * Throws if a portraitUrl is provided but exceeds PORTRAIT_MAX_BYTES -
+ * callers should validate with isPortraitSizeOk() before calling this
+ * so they can show a friendly error instead of a thrown exception.
  */
 export function createCharacter(input: Omit<SavedCharacter, 'id' | 'createdAt' | 'seedContext'> & {
   seedContext?: string;
 }): SavedCharacter {
+  if (input.portraitUrl && !isPortraitSizeOk(input.portraitUrl)) {
+    throw new Error(`Portrait image is too large (max ${Math.round(PORTRAIT_MAX_BYTES / 1000)}KB).`);
+  }
+
   const character: SavedCharacter = {
     ...input,
     seedContext: input.seedContext?.slice(0, SEED_CONTEXT_MAX_CHARS),
@@ -76,6 +90,17 @@ export function createCharacter(input: Omit<SavedCharacter, 'id' | 'createdAt' |
   writeAll(all);
   return character;
 }
+
+/**
+ * Checks whether a data URL is small enough to safely store. Call this
+ * before createCharacter() so the UI can reject an oversized image with
+ * a clear message rather than a caught exception.
+ */
+export function isPortraitSizeOk(dataUrl: string): boolean {
+  return dataUrl.length <= PORTRAIT_MAX_BYTES;
+}
+
+export const PORTRAIT_MAX_KB = Math.round(PORTRAIT_MAX_BYTES / 1000);
 
 /**
  * Deletion is the only supported mutation on an existing character.
