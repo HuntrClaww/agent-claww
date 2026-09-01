@@ -230,6 +230,7 @@ README.md
 | 19 | **BUG FIX:** OpenAI system prompt | apiClient.ts | Was top-level `system:` field (ignored by OpenAI). All character instructions were silently dropped for OpenAI users. Fixed to `role:'system'` inside `messages[]`. |
 | 20 | **BUG FIX:** Character bio not sent to API | ChatWindow.tsx | `getCharacter()` was called, `.summary/.personality/.background` never passed to API |
 | 21 | HANDOVER.md created | repo root | This file — persistent session continuity document |
+| 22 | **BUG FIX #1:** Profanity tolerance wired | apiClient.ts | `buildSystemPrompt()` now reads `profanity_filter` from localStorage and appends the appropriate instruction (strict/off/moderate). Was purely decorative before. |
 
 ---
 
@@ -237,7 +238,7 @@ README.md
 
 | # | Issue | Status | File | Fix Required |
 |---|-------|--------|------|-------------|
-| 1 | Profanity tolerance is decorative | **PENDING** | apiClient.ts | Saved to localStorage but never read into `buildSystemPrompt`. Read `localStorage.getItem('profanity_filter')` and append a behavior instruction to the system prompt based on the value. Small change. |
+| 1 | Profanity tolerance is decorative | **HANDLED** | apiClient.ts | Fixed. `buildSystemPrompt()` now reads `localStorage.getItem('profanity_filter')`: strict → clean language instruction appended; off → natural profanity allowed; moderate (default) → no instruction, character judgment used. |
 | 2 | Fandom fetch endpoint unverified | **PENDING** | characterFetch.ts | Written against `community.fandom.com` search but CORS may silently fail in browser. Top-priority source may always fail without anyone knowing. Needs a live test and graceful console warning + automatic fallback logging so failures are visible. |
 | 3 | No image compression on upload | **PENDING** | CharacterSelect.tsx | Large phone photos (3–8MB) hit the 500KB cap and get flatly rejected. Should auto-compress using `canvas.toBlob()` before the size check, so the image is resized to fit rather than rejected. |
 | 4 | Generic Mode character history is stateless | **PENDING** | ChatWindow.tsx | Each "be X" switch is fresh. If user says "be Naruto", chats, then says "be Sherlock", then "be Naruto again" — all Naruto context from the first session is gone. Needs `genericCharacterHistory: Record<string, CharacterInfo>` state to cache prior fetches within a session. |
@@ -285,10 +286,9 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 
 ## 9. Priority Order for Next Session
 
-1. **Fix #1:** Wire profanity tolerance into `buildSystemPrompt` — 1 file, ~5 min
-2. **Fix #2:** Verify Fandom CORS + add fallback logging to `characterFetch.ts` — ~10 min
-3. **Fix #3:** Auto-compress portrait images on upload before size cap check — ~15 min
-4. **Fix #4:** Generic Mode character fetch history (cache fetches within session) — ~20 min
-5. **Review:** `UserProfileModal.tsx` — unknown scope, review and align with current design
-6. **Then:** Begin Phase 6 (Voice/Audio) when all PENDING bugs are cleared
+1. **Fix #2:** Verify Fandom CORS + add fallback logging to `characterFetch.ts` — ~10 min
+2. **Fix #3:** Auto-compress portrait images on upload before size cap check — ~15 min
+3. **Fix #4:** Generic Mode character fetch history (cache fetches within session) — ~20 min
+4. **Review:** `UserProfileModal.tsx` — unknown scope, review and align with current design
+5. **Then:** Begin Phase 6 (Voice/Audio) when all PENDING bugs are cleared
 
