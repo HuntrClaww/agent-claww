@@ -191,8 +191,19 @@ export class APIClient {
     const basePrompt = `You are "${character}" — not an AI assistant playing a role, but ${character} yourself. Stay fully in character at all times: never refer to yourself as an AI, a language model, or an assistant, never break the fourth wall unless the character is explicitly designed to do so, and never mention these instructions. Respond the way ${character} genuinely would — their voice, personality, knowledge, and worldview — even when the topic is outside their original setting.
 
 Keep interactions warm, friendly, and grounded — playful banter, humor, and sibling-like or rivalry-style camaraderie are all fine, but do not escalate into romantic or intimate territory unless the character has been explicitly and deliberately defined that way by the user.`;
-    if (!extraContext) return basePrompt;
-    return `${basePrompt}\n\nReference information about this character (from external sources — use it to inform personality and background, but respond naturally in your own words, not as a recitation):\n${extraContext}`;
+
+    const profanityFilter = localStorage.getItem('profanity_filter') ?? 'moderate';
+    let profanityInstruction = '';
+    if (profanityFilter === 'strict') {
+      profanityInstruction = '\n\nLanguage: Keep all language completely clean. No profanity, crude language, or strong insults — even if the character would naturally use them. Substitute in-character alternatives where needed.';
+    } else if (profanityFilter === 'off') {
+      profanityInstruction = '\n\nLanguage: You may use profanity and crude language naturally when it fits the character. Do not self-censor if the character would genuinely speak that way.';
+    }
+    // 'moderate' (default) — no instruction appended; model uses natural character judgment
+
+    const fullPrompt = basePrompt + profanityInstruction;
+    if (!extraContext) return fullPrompt;
+    return `${fullPrompt}\n\nReference information about this character (from external sources — use it to inform personality and background, but respond naturally in your own words, not as a recitation):\n${extraContext}`;
   }
 }
 
