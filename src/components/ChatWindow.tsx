@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import SettingsModal from './SettingsModal';
 import CharacterSelect from './CharacterSelect';
+import CharacterPortrait from './CharacterPortrait';
 import Sidebar from './Sidebar';
 import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock } from 'lucide-react';
 import { APIClient, detectAPIProvider } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
+import { getCharacter } from '../lib/characterStore';
+import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
 
 // Define what a single message looks like
 interface Message {
@@ -12,6 +15,7 @@ interface Message {
   role: 'user' | 'ai';
   content: string;
   citation?: string; // e.g. "via Fandom" - shown when character info was fetched
+  emotion?: Emotion; // detected emotion for this AI message
 }
 
 // Parses the mode string coming out of CharacterSelect:
@@ -58,6 +62,9 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
   // Generic Mode only: which character the AI is currently embodying
   const [genericCharacter, setGenericCharacter] = useState<string | null>(null);
+
+  // Current portrait emotion (Personality Mode only) - reflects the AI's most recent message
+  const [currentEmotion, setCurrentEmotion] = useState<Emotion>('neutral');
   
   // API status tracking
   const [apiStatus, setApiStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -148,6 +155,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     setIsTyping(false);
     setActiveMode(null);
     setGenericCharacter(null);
+    setCurrentEmotion('neutral');
     setMessages([]);
     setIsSidebarOpen(false);
     setApiStatus('idle');
@@ -189,17 +197,30 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
         }
         setGenericCharacter(character);
       }
+    } else if (activeMode?.kind === 'personality') {
+      // Personality Mode: send the character's stored bio (if any) plus the
+      // emotion-tracking instruction for the portrait panel.
+      const saved = activeMode.characterId ? getCharacter(activeMode.characterId) : undefined;
+      const bio = saved
+        ? [saved.summary, saved.personality, saved.background].filter(Boolean).join('\n\n')
+        : undefined;
+      extraContext = [bio, EMOTION_TAG_INSTRUCTION].filter(Boolean).join('\n\n');
     }
 
     // 3. Send to real API
     const aiResponse = await sendAPIRequest(prompt, character, extraContext);
+    const { cleanedText, emotion } = parseEmotion(aiResponse);
     const newAiMsg: Message = {
       id: (Date.now() + 1).toString(),
       role: 'ai',
-      content: aiResponse,
+      content: cleanedText,
       citation,
+      emotion,
     };
     setMessages(prev => [...prev, newAiMsg]);
+    if (activeMode?.kind === 'personality') {
+      setCurrentEmotion(emotion);
+    }
     setIsTyping(false);
   };
 
@@ -275,7 +296,18 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
             }]);
           }} />
         ) : (
-          <>
+          <div className="flex-1 flex overflow-hidden">
+            {/* Character Portrait Panel - Personality Mode, desktop only */}
+            {activeMode.kind === 'personality' && (
+              <div className="hidden md:block w-64 shrink-0 p-4 border-r border-slate-800">
+                <CharacterPortrait
+                  characterName={activeMode.characterName || 'Character'}
+                  emotion={currentEmotion}
+                />
+              </div>
+            )}
+
+            <div className="flex-1 flex flex-col overflow-hidden">
             {/* Dynamic Chat History Area */}
             <div className="flex-1 p-6 overflow-y-auto">
               <div className="flex flex-col space-y-6 max-w-3xl mx-auto">
@@ -382,7 +414,8 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                 )}
               </div>
             </div>
-          </>
+            </div>
+          </div>
         )}
       </div>
 
