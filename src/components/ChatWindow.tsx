@@ -245,6 +245,12 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     );
   };
 
+  // The active character's theme color, if one was set at creation time
+  const activeThemeColor =
+    activeMode?.kind === 'personality' && activeMode.characterId
+      ? getCharacter(activeMode.characterId)?.themeColor
+      : undefined;
+
   return (
     <div className="flex h-screen bg-slate-900 text-slate-100 font-sans w-full overflow-hidden">
       <Sidebar 
@@ -255,7 +261,10 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
         onNewChat={handleNewChat}
       />
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div
+        className="flex-1 flex flex-col h-full overflow-hidden"
+        style={activeThemeColor ? ({ '--character-accent': activeThemeColor } as React.CSSProperties) : undefined}
+      >
         {/* Mobile Header */}
         <div className="md:hidden flex items-center p-4 bg-slate-800 border-b border-slate-700">
           <button onClick={() => setIsSidebarOpen(true)} className="text-slate-300 hover:text-white mr-4">
@@ -332,11 +341,14 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                     </div>
 
                     {/* Message Bubble */}
-                    <div className={`p-4 rounded-2xl max-w-[80%] transition-all duration-200 ${
-                      msg.role === 'user' 
-                        ? 'bg-gradient-to-br from-teal-600 to-teal-700 text-white rounded-tr-sm shadow-md hover:shadow-lg' 
-                        : 'bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-600 text-slate-100 rounded-tl-sm shadow-md hover:shadow-lg backdrop-blur-sm'
-                    }`}>
+                    <div
+                      style={msg.role === 'ai' && activeThemeColor ? { borderLeft: `3px solid ${activeThemeColor}` } : undefined}
+                      className={`p-4 rounded-2xl max-w-[80%] transition-all duration-200 ${
+                        msg.role === 'user' 
+                          ? 'bg-gradient-to-br from-teal-600 to-teal-700 text-white rounded-tr-sm shadow-md hover:shadow-lg' 
+                          : 'bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-600 text-slate-100 rounded-tl-sm shadow-md hover:shadow-lg backdrop-blur-sm'
+                      }`}
+                    >
                       <p className="leading-relaxed whitespace-pre-wrap text-sm">{renderContent(msg.content)}</p>
                       {msg.citation && (
                         <p className="text-[10px] text-slate-500 mt-2 pt-2 border-t border-slate-700/60">
@@ -403,7 +415,8 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                   <button
                     onClick={handleSend}
                     disabled={!inputText.trim() || isTyping}
-                    className="bg-gradient-to-br from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium transition-all shadow-md hover:shadow-lg active:shadow-sm disabled:hover:shadow-md"
+                    style={activeThemeColor ? { background: activeThemeColor } : undefined}
+                    className={`${activeThemeColor ? '' : 'bg-gradient-to-br from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600'} disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium transition-all shadow-md hover:shadow-lg active:shadow-sm disabled:hover:shadow-md`}
                   >
                     Send
                   </button>
