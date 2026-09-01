@@ -98,10 +98,13 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       if (apiKey && apiKey.trim()) {
         const provider = await detectAPIProvider(apiKey);
         if (provider) {
+          const storedTemp = localStorage.getItem('ai_temperature');
+          const temperature = storedTemp ? parseFloat(storedTemp) : undefined;
           setApiClient(new APIClient({ 
             provider, 
             apiKey,
-            model: provider === 'anthropic' ? 'claude-opus-4-1' : undefined
+            model: provider === 'anthropic' ? 'claude-opus-4-1' : undefined,
+            temperature: temperature !== undefined && !isNaN(temperature) ? temperature : undefined,
           }));
           setApiStatus('success');
           setApiMessage(`Using ${provider} API`);
