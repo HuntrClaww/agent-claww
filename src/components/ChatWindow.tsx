@@ -303,6 +303,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                 <CharacterPortrait
                   characterName={activeMode.characterName || 'Character'}
                   emotion={currentEmotion}
+                  portraitUrl={activeMode.characterId ? getCharacter(activeMode.characterId)?.portraitUrl : undefined}
                 />
               </div>
             )}

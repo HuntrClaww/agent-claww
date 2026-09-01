@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2 } from 'lucide-react';
+import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2, ImagePlus, X } from 'lucide-react';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
-import { createCharacter, listCharacters, deleteCharacter, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode } from '../lib/characterStore';
+import { createCharacter, listCharacters, deleteCharacter, isPortraitSizeOk, PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode } from '../lib/characterStore';
 
 export default function CharacterSelect({ onSelect }: { onSelect: (mode: string) => void }) {
   const [characterName, setCharacterName] = useState('');
@@ -10,6 +10,8 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [forkFromId, setForkFromId] = useState<string | null>(null);
   const [seedContext, setSeedContext] = useState('');
   const [isFetching, setIsFetching] = useState(false);
+  const [portraitDataUrl, setPortraitDataUrl] = useState<string | null>(null);
+  const [portraitError, setPortraitError] = useState<string | null>(null);
 
   useEffect(() => {
     const refresh = () => setSaved(listCharacters());
@@ -20,6 +22,25 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
 
   const handleUseSaved = (character: SavedCharacter) => {
     onSelect(`personality:${character.behavior}:${character.name}:${character.id}`);
+  };
+
+  const handlePortraitFile = (file: File | undefined) => {
+    setPortraitError(null);
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setPortraitError('Please choose an image file.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      if (!isPortraitSizeOk(dataUrl)) {
+        setPortraitError(`Image is too large (max ${PORTRAIT_MAX_KB}KB) — try a smaller or more compressed image.`);
+        return;
+      }
+      setPortraitDataUrl(dataUrl);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handlePersonalityStart = async () => {
@@ -37,6 +58,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
       source: info ? citationTag(info) : 'user-provided',
       forkedFrom: forkFromId || undefined,
       seedContext: forkFromId ? seedContext : undefined,
+      portraitUrl: portraitDataUrl || undefined,
     });
 
     onSelect(`personality:${character.behavior}:${character.name}:${character.id}`);
@@ -120,6 +142,13 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                         onClick={() => handleUseSaved(c)}
                         className="flex-1 flex items-center gap-2 text-left min-w-0"
                       >
+                        {c.portraitUrl ? (
+                          <img src={c.portraitUrl} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold flex items-center justify-center shrink-0">
+                            {c.name[0]?.toUpperCase()}
+                          </span>
+                        )}
                         <span className="text-sm text-slate-200 truncate">{c.name}</span>
                         <span className="text-[9px] uppercase tracking-wide text-amber-300/70 shrink-0">
                           {c.behavior === 'true-to-character' ? 'Lore-Locked' : 'Open-World'}
@@ -163,19 +192,51 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
               </div>
             )}
 
-            {/* Character name input */}
-            <label className="block mb-3">
-              <span className="text-xs font-medium text-slate-500 mb-1.5 block">
-                {forkSource ? 'New character name' : 'Character name'}
-              </span>
-              <input
-                type="text"
-                value={characterName}
-                onChange={(e) => setCharacterName(e.target.value)}
-                placeholder="e.g. Sherlock Holmes"
-                className="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all"
-              />
-            </label>
+            {/* Character name + portrait upload */}
+            <div className="flex gap-3 mb-3">
+              <label className="block flex-1">
+                <span className="text-xs font-medium text-slate-500 mb-1.5 block">
+                  {forkSource ? 'New character name' : 'Character name'}
+                </span>
+                <input
+                  type="text"
+                  value={characterName}
+                  onChange={(e) => setCharacterName(e.target.value)}
+                  placeholder="e.g. Sherlock Holmes"
+                  className="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all"
+                />
+              </label>
+
+              <div className="shrink-0">
+                <span className="text-xs font-medium text-slate-500 mb-1.5 block">Portrait</span>
+                <label className="relative block w-[42px] h-[42px] rounded-lg border border-dashed border-slate-600 hover:border-amber-400 cursor-pointer transition-colors overflow-hidden bg-slate-900/70">
+                  {portraitDataUrl ? (
+                    <img src={portraitDataUrl} alt="Portrait preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-500">
+                      <ImagePlus size={16} />
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handlePortraitFile(e.target.files?.[0])}
+                    className="hidden"
+                  />
+                </label>
+                {portraitDataUrl && (
+                  <button
+                    onClick={() => { setPortraitDataUrl(null); setPortraitError(null); }}
+                    className="text-[10px] text-slate-500 hover:text-red-400 mt-1 flex items-center gap-0.5 mx-auto"
+                  >
+                    <X size={10} /> clear
+                  </button>
+                )}
+              </div>
+            </div>
+            {portraitError && (
+              <p className="text-[11px] text-red-400 mb-3 -mt-1.5">{portraitError}</p>
+            )}
 
             {/* Seed context, only when forking */}
             {forkSource && (
