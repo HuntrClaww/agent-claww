@@ -6,7 +6,7 @@ import Sidebar from './Sidebar';
 import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock } from 'lucide-react';
 import { APIClient, detectAPIProvider } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
-import { getCharacter } from '../lib/characterStore';
+import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
 import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
 
 // Define what a single message looks like
@@ -307,15 +307,18 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
         ) : (
           <div className="flex-1 flex overflow-hidden">
             {/* Character Portrait Panel - Personality Mode, desktop only */}
-            {activeMode.kind === 'personality' && (
-              <div className="hidden md:block w-64 shrink-0 p-4 border-r border-slate-800">
-                <CharacterPortrait
-                  characterName={activeMode.characterName || 'Character'}
-                  emotion={currentEmotion}
-                  portraitUrl={activeMode.characterId ? getCharacter(activeMode.characterId)?.portraitUrl : undefined}
-                />
-              </div>
-            )}
+            {activeMode.kind === 'personality' && (() => {
+              const savedChar = activeMode.characterId ? getCharacter(activeMode.characterId) : undefined;
+              return (
+                <div className="hidden md:block w-64 shrink-0 p-4 border-r border-slate-800">
+                  <CharacterPortrait
+                    characterName={activeMode.characterName || 'Character'}
+                    emotion={currentEmotion}
+                    portraitUrl={savedChar ? resolvePortraitForEmotion(savedChar, currentEmotion) : undefined}
+                  />
+                </div>
+              );
+            })()}
 
             <div className="flex-1 flex flex-col overflow-hidden">
             {/* Dynamic Chat History Area */}
