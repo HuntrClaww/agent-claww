@@ -28,6 +28,7 @@ export interface SavedCharacter {
   forkedFrom?: string;    // id of the character this was forked from, if any
   seedContext?: string;   // curated snippets pasted in when forking (capped)
   portraitUrl?: string;   // data URL for the character's portrait image
+  themeColor?: string;    // hex accent color (e.g. "#f472b6") applied when this character's chat is active
   createdAt: number;
 }
 
@@ -77,6 +78,9 @@ export function createCharacter(input: Omit<SavedCharacter, 'id' | 'createdAt' |
   if (input.portraitUrl && !isPortraitSizeOk(input.portraitUrl)) {
     throw new Error(`Portrait image is too large (max ${Math.round(PORTRAIT_MAX_BYTES / 1000)}KB).`);
   }
+  if (input.themeColor && !isValidHexColor(input.themeColor)) {
+    throw new Error('Theme color must be a valid hex color (e.g. #f472b6).');
+  }
 
   const character: SavedCharacter = {
     ...input,
@@ -89,6 +93,14 @@ export function createCharacter(input: Omit<SavedCharacter, 'id' | 'createdAt' |
   all.push(character);
   writeAll(all);
   return character;
+}
+
+/**
+ * Guards against non-hex strings ever reaching a CSS variable, since
+ * themeColor is injected directly into inline styles by the chat UI.
+ */
+export function isValidHexColor(value: string): boolean {
+  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value);
 }
 
 /**
