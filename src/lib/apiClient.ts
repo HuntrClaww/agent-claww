@@ -2,6 +2,10 @@ export interface APIConfig {
   provider: 'anthropic' | 'openai' | 'gemini';
   apiKey: string;
   model?: string;
+  /** Controls response randomness/creativity. Range 0.0-2.0 for
+   * Anthropic/OpenAI, 0.0-2.0 for Gemini. Defaults to 1.0 (provider default)
+   * when not set. */
+  temperature?: number;
 }
 
 export interface APIResponse {
@@ -62,6 +66,7 @@ export class APIClient {
       body: JSON.stringify({
         model: this.config.model || 'claude-opus-4-1',
         max_tokens: 1024,
+        ...(this.config.temperature !== undefined ? { temperature: this.config.temperature } : {}),
         system: systemPrompt,
         messages: [
           {
@@ -103,8 +108,12 @@ export class APIClient {
       body: JSON.stringify({
         model: this.config.model || 'gpt-4o-mini',
         max_tokens: 1024,
-        system: systemPrompt,
+        ...(this.config.temperature !== undefined ? { temperature: this.config.temperature } : {}),
         messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
           {
             role: 'user',
             content: userMessage,
@@ -153,6 +162,7 @@ export class APIClient {
           ],
           generation_config: {
             maxOutputTokens: 1024,
+            ...(this.config.temperature !== undefined ? { temperature: this.config.temperature } : {}),
           },
         }),
       }
