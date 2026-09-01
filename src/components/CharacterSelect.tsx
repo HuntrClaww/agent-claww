@@ -3,6 +3,8 @@ import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2,
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { createCharacter, listCharacters, deleteCharacter, isPortraitSizeOk, PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode } from '../lib/characterStore';
 
+const DEFAULT_THEME_COLOR = '#f59e0b'; // matches the app's existing amber accent
+
 export default function CharacterSelect({ onSelect }: { onSelect: (mode: string) => void }) {
   const [characterName, setCharacterName] = useState('');
   const [behavior, setBehavior] = useState<BehaviorMode>('off-script');
@@ -12,6 +14,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [isFetching, setIsFetching] = useState(false);
   const [portraitDataUrl, setPortraitDataUrl] = useState<string | null>(null);
   const [portraitError, setPortraitError] = useState<string | null>(null);
+  const [themeColor, setThemeColor] = useState(DEFAULT_THEME_COLOR);
 
   useEffect(() => {
     const refresh = () => setSaved(listCharacters());
@@ -59,6 +62,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
       forkedFrom: forkFromId || undefined,
       seedContext: forkFromId ? seedContext : undefined,
       portraitUrl: portraitDataUrl || undefined,
+      themeColor: themeColor !== DEFAULT_THEME_COLOR ? themeColor : undefined,
     });
 
     onSelect(`personality:${character.behavior}:${character.name}:${character.id}`);
@@ -232,6 +236,19 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                     <X size={10} /> clear
                   </button>
                 )}
+              </div>
+
+              <div className="shrink-0">
+                <span className="text-xs font-medium text-slate-500 mb-1.5 block">Color</span>
+                <label className="relative block w-[42px] h-[42px] rounded-lg border border-slate-600 cursor-pointer overflow-hidden">
+                  <div className="w-full h-full" style={{ backgroundColor: themeColor }} />
+                  <input
+                    type="color"
+                    value={themeColor}
+                    onChange={(e) => setThemeColor(e.target.value)}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                </label>
               </div>
             </div>
             {portraitError && (
