@@ -15,6 +15,8 @@
 // Storage: localStorage, following the same raw-key + 'profileUpdated'-
 // style event convention already used by UserProfileModal/Sidebar.
 
+import type { Emotion } from './emotionDetect';
+
 export type BehaviorMode = 'true-to-character' | 'off-script';
 
 export interface SavedCharacter {
@@ -27,7 +29,8 @@ export interface SavedCharacter {
   source?: string;        // e.g. "Fandom", "AniList", "user-provided"
   forkedFrom?: string;    // id of the character this was forked from, if any
   seedContext?: string;   // curated snippets pasted in when forking (capped)
-  portraitUrl?: string;   // data URL for the character's portrait image
+  portraitUrl?: string;   // data URL for the character's default/neutral portrait
+  emotionPortraits?: Partial<Record<Emotion, string>>; // optional per-emotion art, sparse - unset emotions fall back to portraitUrl
   themeColor?: string;    // hex accent color (e.g. "#f472b6") applied when this character's chat is active
   createdAt: number;
 }
@@ -39,6 +42,10 @@ const SEED_CONTEXT_MAX_CHARS = 2000; // keeps forks a curated seed, not a full h
 // a reasonable ceiling for a prototype - a real backend would use object
 // storage instead and lift this entirely.
 const PORTRAIT_MAX_BYTES = 500_000;
+// Emotion slots are optional extras stacked on top of the default portrait,
+// so each one gets a tighter cap to keep a fully-loaded character reasonable
+// (10 emotions x 150KB = 1.5MB max, on top of the 500KB default portrait).
+const EMOTION_PORTRAIT_MAX_BYTES = 150_000;
 
 function readAll(): SavedCharacter[] {
   try {
@@ -81,6 +88,13 @@ export function createCharacter(input: Omit<SavedCharacter, 'id' | 'createdAt' |
   if (input.themeColor && !isValidHexColor(input.themeColor)) {
     throw new Error('Theme color must be a valid hex color (e.g. #f472b6).');
   }
+  if (input.emotionPortraits) {
+    for (const [emotion, dataUrl] of Object.entries(input.emotionPortraits)) {
+      if (dataUrl && !isEmotionPortraitSizeOk(dataUrl)) {
+        throw new Error(`${emotion} portrait is too large (max ${EMOTION_PORTRAIT_MAX_KB}KB).`);
+      }
+    }
+  }
 
   const character: SavedCharacter = {
     ...input,
@@ -113,6 +127,24 @@ export function isPortraitSizeOk(dataUrl: string): boolean {
 }
 
 export const PORTRAIT_MAX_KB = Math.round(PORTRAIT_MAX_BYTES / 1000);
+
+/**
+ * Checks whether a data URL is small enough to store as an emotion slot
+ * image (tighter cap than the default portrait - see EMOTION_PORTRAIT_MAX_BYTES).
+ */
+export function isEmotionPortraitSizeOk(dataUrl: string): boolean {
+  return dataUrl.length <= EMOTION_PORTRAIT_MAX_BYTES;
+}
+
+export const EMOTION_PORTRAIT_MAX_KB = Math.round(EMOTION_PORTRAIT_MAX_BYTES / 1000);
+
+/**
+ * Resolves the image to show for a given emotion: the matching emotion
+ * slot if the character has one, otherwise the default portrait.
+ */
+export function resolvePortraitForEmotion(character: SavedCharacter, emotion: Emotion): string | undefined {
+  return character.emotionPortraits?.[emotion] || character.portraitUrl;
+}
 
 /**
  * Deletion is the only supported mutation on an existing character.
