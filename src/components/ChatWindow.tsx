@@ -267,7 +267,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
             setActiveMode(parsed);
             const greeting = parsed.kind === 'generic'
               ? "You're in **Generic Mode**. Ask me about any character, or tell me who to become."
-              : `**${parsed.characterName}** is locked in, running **${parsed.behavior === 'true-to-character' ? 'True-to-Character' : 'Off-Script'}**. Say hello.`;
+              : `**${parsed.characterName}** is locked in, running **${parsed.behavior === 'true-to-character' ? 'Lore-Locked' : 'Open-World'}**. Say hello.`;
             setMessages([{
               id: Date.now().toString(),
               role: 'ai',
@@ -426,7 +426,7 @@ function ModeTitle({
       <Lock size={15} className="text-amber-400 shrink-0" />
       <h1 className="text-lg font-bold text-slate-100 truncate">{mode.characterName}</h1>
       <span className="text-[10px] uppercase tracking-wide text-amber-300/80 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5 shrink-0">
-        {mode.behavior === 'true-to-character' ? 'Strict' : 'Off-Script'}
+        {mode.behavior === 'true-to-character' ? 'Lore-Locked' : 'Open-World'}
       </span>
     </div>
   );

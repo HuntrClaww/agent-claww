@@ -122,7 +122,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                       >
                         <span className="text-sm text-slate-200 truncate">{c.name}</span>
                         <span className="text-[9px] uppercase tracking-wide text-amber-300/70 shrink-0">
-                          {c.behavior === 'true-to-character' ? 'Strict' : 'Off-Script'}
+                          {c.behavior === 'true-to-character' ? 'Lore-Locked' : 'Open-World'}
                         </span>
                       </button>
                       <button
@@ -196,9 +196,9 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
               </label>
             )}
 
-            {/* Behavior toggle */}
+            {/* Behavior toggle — framed around knowledge access, per design notes */}
             <div className="mb-5">
-              <span className="text-xs font-medium text-slate-500 mb-1.5 block">Behavior</span>
+              <span className="text-xs font-medium text-slate-500 mb-1.5 block">Knowledge Access</span>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setBehavior('true-to-character')}
@@ -209,7 +209,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                   }`}
                 >
                   <BookLock size={16} />
-                  True-to-Character
+                  Lore-Locked
                 </button>
                 <button
                   onClick={() => setBehavior('off-script')}
@@ -220,13 +220,13 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                   }`}
                 >
                   <Sparkles size={16} />
-                  Off-Script
+                  Open-World
                 </button>
               </div>
               <p className="text-[11px] text-slate-500 mt-2 leading-relaxed">
                 {behavior === 'true-to-character'
-                  ? 'Stays strictly canon — won\u2019t acknowledge anything outside their source material.'
-                  : 'Same core personality, but can learn, develop, and break the fourth wall.'}
+                  ? 'Confined to their own world — no knowledge of anything outside their source material, reacting to modern topics with in-character confusion or wonder.'
+                  : 'Full access to real-world knowledge and modern topics, filtered entirely through their personality — same core self, just aware of more.'}
               </p>
             </div>
 
