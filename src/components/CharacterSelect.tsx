@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2, ImagePlus, X } from 'lucide-react';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
-import { createCharacter, listCharacters, deleteCharacter, isPortraitSizeOk, PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode } from '../lib/characterStore';
+import { createCharacter, listCharacters, deleteCharacter, isPortraitSizeOk, isEmotionPortraitSizeOk, PORTRAIT_MAX_KB, EMOTION_PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode } from '../lib/characterStore';
+import { EMOTION_EMOJI, type Emotion } from '../lib/emotionDetect';
 
 const DEFAULT_THEME_COLOR = '#f59e0b'; // matches the app's existing amber accent
+// A curated subset of the full emotion set - keeps the creation form usable.
+// Any emotion not uploaded here simply falls back to the default portrait.
+const OPTIONAL_EMOTION_SLOTS: Emotion[] = ['happy', 'sad', 'angry', 'surprised'];
 
 export default function CharacterSelect({ onSelect }: { onSelect: (mode: string) => void }) {
   const [characterName, setCharacterName] = useState('');
@@ -15,6 +19,9 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [portraitDataUrl, setPortraitDataUrl] = useState<string | null>(null);
   const [portraitError, setPortraitError] = useState<string | null>(null);
   const [themeColor, setThemeColor] = useState(DEFAULT_THEME_COLOR);
+  const [emotionPortraits, setEmotionPortraits] = useState<Partial<Record<Emotion, string>>>({});
+  const [emotionError, setEmotionError] = useState<string | null>(null);
+  const [showEmotionSlots, setShowEmotionSlots] = useState(false);
 
   useEffect(() => {
     const refresh = () => setSaved(listCharacters());
@@ -46,6 +53,33 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
     reader.readAsDataURL(file);
   };
 
+  const handleEmotionSlotFile = (emotion: Emotion, file: File | undefined) => {
+    setEmotionError(null);
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setEmotionError('Please choose an image file.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      if (!isEmotionPortraitSizeOk(dataUrl)) {
+        setEmotionError(`Image is too large (max ${EMOTION_PORTRAIT_MAX_KB}KB per emotion) — try a smaller or more compressed image.`);
+        return;
+      }
+      setEmotionPortraits(prev => ({ ...prev, [emotion]: dataUrl }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearEmotionSlot = (emotion: Emotion) => {
+    setEmotionPortraits(prev => {
+      const next = { ...prev };
+      delete next[emotion];
+      return next;
+    });
+  };
+
   const handlePersonalityStart = async () => {
     const trimmed = characterName.trim();
     if (!trimmed || isFetching) return;
@@ -62,6 +96,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
       forkedFrom: forkFromId || undefined,
       seedContext: forkFromId ? seedContext : undefined,
       portraitUrl: portraitDataUrl || undefined,
+      emotionPortraits: Object.keys(emotionPortraits).length > 0 ? emotionPortraits : undefined,
       themeColor: themeColor !== DEFAULT_THEME_COLOR ? themeColor : undefined,
     });
 
@@ -254,6 +289,50 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
             {portraitError && (
               <p className="text-[11px] text-red-400 mb-3 -mt-1.5">{portraitError}</p>
             )}
+
+            {/* Optional per-emotion portrait slots */}
+            <div className="mb-3">
+              <button
+                onClick={() => setShowEmotionSlots(v => !v)}
+                className="text-xs text-slate-500 hover:text-amber-300 transition-colors flex items-center gap-1"
+              >
+                {showEmotionSlots ? '\u2212' : '+'} Add emotion-specific art (optional)
+              </button>
+              {showEmotionSlots && (
+                <div className="mt-2.5 grid grid-cols-4 gap-2">
+                  {OPTIONAL_EMOTION_SLOTS.map(emo => (
+                    <div key={emo} className="text-center">
+                      <label className="relative block w-full aspect-square rounded-lg border border-dashed border-slate-600 hover:border-amber-400 cursor-pointer transition-colors overflow-hidden bg-slate-900/70">
+                        {emotionPortraits[emo] ? (
+                          <img src={emotionPortraits[emo]} alt={emo} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-lg">
+                            {EMOTION_EMOJI[emo]}
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleEmotionSlotFile(emo, e.target.files?.[0])}
+                          className="hidden"
+                        />
+                      </label>
+                      <div className="flex items-center justify-center gap-1 mt-1">
+                        <span className="text-[9px] text-slate-500 capitalize">{emo}</span>
+                        {emotionPortraits[emo] && (
+                          <button onClick={() => clearEmotionSlot(emo)} className="text-slate-500 hover:text-red-400">
+                            <X size={9} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {emotionError && (
+                <p className="text-[11px] text-red-400 mt-2">{emotionError}</p>
+              )}
+            </div>
 
             {/* Seed context, only when forking */}
             {forkSource && (
