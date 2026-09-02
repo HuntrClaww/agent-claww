@@ -136,16 +136,27 @@ README.md
 - [ ] Generic Mode character history is stateless — switching back to a previous character loses all context
 - [ ] UserProfileModal.tsx never reviewed — unknown scope
 
-### Phase 6 — Voice & Audio System ⏳ PENDING (future)
-- [ ] TTS integration: ElevenLabs (commercial) or F5-TTS / XTTS v2 (open-source self-hosted)
-- [ ] Zero-shot voice cloning: 10–30s audio sample → Voice ID → reused per character
-- [ ] Streaming relay architecture: sentence-boundary chunking (buffer until `.!?`) → send sentence to TTS while next generates
-- [ ] Audio queue using Web Audio API: `AnalyserNode` → prevents sentence overlap, drives visualizer
-- [ ] Voice orb visualizer: CSS scale or canvas tied to audio frequency data (60fps)
-- [ ] "Voice Mode" / "Call" toggle at top of chat → fade to Zen Mode layout
-- [ ] Customizable orb style (Neon Orb, Waveform, Hologram) + color
-- [ ] Voice Studio section in character creation: drag-and-drop 15s audio sample upload
-- [ ] Legal checkbox: user confirms they have rights to uploaded voice
+### Phase 6 — Voice & Audio System 🔄 IN PROGRESS
+**Free-tier research completed 2026-09-02** (hard constraint: no payment method entry, ever — free signup + API key only):
+
+| Option | Cost | Card required? | Cloning? | Verdict |
+|---|---|---|---|---|
+| Web Speech API (browser-native) | $0 forever | No signup at all | No | **Chosen starting point** — zero setup, zero limits |
+| Edge TTS (open-source wrapper) | $0 | No signup | No | Backup option, community tooling not official |
+| Free.ai TTS | 30k tokens/day free | No card | No | Possible later upgrade, needs email signup |
+| ElevenLabs | Small free tier (~10k chars/mo) | Signup only for free plan | **Yes — real voice cloning** | The eventual cloning option once basic voice system is live; free quota is small, needs testing |
+| Azure F0 | 500k chars/mo free | Azure account + billing setup (friction) | No | Deprioritized — setup friction |
+| Google Cloud TTS | 4M chars/mo standard | **Requires credit card to activate** | No | Ruled out — violates hard constraint |
+
+**Build plan (revised, free-first):**
+- [ ] Voice engine: Web Speech API (`SpeechSynthesis`) — zero cost, zero dependency, works today
+- [ ] Per-character voice settings stored on `SavedCharacter`: selected system voice name, pitch, rate
+- [ ] Voice Studio section in character creation: pick from available system voices, live preview button
+- [ ] "Voice Mode" / "Call" toggle in chat toolbar → reads AI responses aloud automatically
+- [ ] Sentence-boundary chunking (buffer until `.!?`) so long responses start speaking before the full reply finishes generating
+- [ ] Mic input (optional, later): `SpeechRecognition` API — also browser-native, $0
+- [ ] **Deferred, needs real API key from user:** ElevenLabs integration for true voice cloning — user provides their own free-tier ElevenLabs key in Settings (same pattern as the existing AI provider keys), never a payment method
+- [ ] Voice orb visualizer: CSS scale or canvas tied to `AnalyserNode` frequency data — client-side only, no cost implication
 
 ### Phase 7 — Professional Coaching Modules ⏳ PENDING (future, third pillar)
 - [ ] This is a THIRD PILLAR beyond the two-mode system — do not fold into Generic/Personality
