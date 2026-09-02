@@ -158,7 +158,7 @@ README.md
 - [x] Voice Studio section in character creation: pick from available system voices, live preview button
 - [x] "Voice Mode" / "Call" toggle in chat toolbar → reads AI responses aloud automatically
 - [x] Sentence-boundary chunking wired into ChatWindow send flow — AI responses spoken via `speakQueue(splitIntoSentences(...))`
-- [ ] Mic input (optional, later): `SpeechRecognition` API — also browser-native, $0
+- [x] Mic input (`SpeechRecognition`) — wired into chat input, browser-native, $0
 - [ ] **Deferred, needs real API key from user:** ElevenLabs integration for true voice cloning — user provides their own free-tier ElevenLabs key in Settings (same pattern as the existing AI provider keys), never a payment method
 - [ ] Voice orb visualizer: CSS scale or canvas tied to `AnalyserNode` frequency data — client-side only, no cost implication
 
@@ -264,6 +264,8 @@ README.md
 | 28 | **Phase 6 (2/N):** voiceEngine.ts playback wrapper | voiceEngine.ts | Web Speech API wrapper: `getAvailableVoices()`, `speak()`, `speakQueue()`, `stopSpeaking()`, `isSpeaking()`, `splitIntoSentences()`. Zero cost, no signup. Not yet wired into UI. |
 | 29 | **Phase 6 (3/N):** Voice Studio picker UI | CharacterSelect.tsx | Optional "Set a voice" section in character creation: system voice dropdown, pitch/rate sliders, live preview button. `voiceSettings` wired into `createCharacter()`, only stored if user changed a default. |
 | 30 | **Phase 6 (4/N):** Voice Mode toggle — core playback loop complete | ChatWindow.tsx | `voiceModeOn` toggle (persisted, mobile+desktop headers). AI responses now speak aloud via `speakQueue(splitIntoSentences())` on arrival. Personality Mode uses saved character voiceSettings; Generic Mode uses browser default. `stopSpeaking()` on toggle-off and new chat. |
+| 31 | **Phase 6 (5/N):** Mic input engine | voiceEngine.ts | Added `isMicSupported()`, `startListening()`, `stopListening()` with minimal ambient `SpeechRecognition` TS types. Browser-native, zero cost. |
+| 32 | **Phase 6 (6/N):** Mic button wired into chat | ChatWindow.tsx | Mic button next to Send, gated by `isMicSupported()`. Live interim transcripts, auto-stop on final result, `stopListening()` on new chat. Phase 6 core loop complete both directions (speak-to-send + Voice Mode read-back). |
 
 ---
 
@@ -325,8 +327,14 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
    - [x] VoiceSettings data model added to characterStore.ts
    - [x] Web Speech API playback engine built (voiceEngine.ts)
    - [x] Voice Studio UI in character creation (voice picker + live preview)
-   - [x] Voice Mode toggle in chat toolbar — wired, AI responses speak aloud
-   - [ ] Mic input (SpeechRecognition) — lower priority, after playback works
+   - [x] Mic input (SpeechRecognition) — wired into chat input
+
+**Phase 6 core build is complete.** Remaining open item is the voice-sample
+analysis concept below (not yet scoped — needs a dedicated design session,
+not a quick add). Otherwise Phase 6 is ready for real-device testing
+across browsers (mobile Safari mic support in particular should be
+verified — desktop Chrome/Edge confirmed working during dev).
+
    - [ ] Avatar tool (Phase 8) remains explicitly deferred until Phase 6 is complete
-   - [ ] Voice-sample analysis idea (pitch/tone depiction to aid manual tuning) — not yet scoped, consider after mic input
+   - [ ] Voice-sample analysis idea (pitch/tone depiction to aid manual tuning) — not yet scoped
 
