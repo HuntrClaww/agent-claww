@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2, ImagePlus, X } from 'lucide-react';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
-import { createCharacter, listCharacters, deleteCharacter, PORTRAIT_MAX_KB, EMOTION_PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode } from '../lib/characterStore';
+import { createCharacter, listCharacters, deleteCharacter, PORTRAIT_MAX_KB, EMOTION_PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode, type VoiceSettings } from '../lib/characterStore';
 import { compressPortrait } from '../lib/imageCompress';
+import { getAvailableVoices, speak, isVoiceSupported } from '../lib/voiceEngine';
 import { EMOTION_EMOJI, type Emotion } from '../lib/emotionDetect';
 
 const DEFAULT_THEME_COLOR = '#f59e0b'; // matches the app's existing amber accent
@@ -23,6 +24,17 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [emotionPortraits, setEmotionPortraits] = useState<Partial<Record<Emotion, string>>>({});
   const [emotionError, setEmotionError] = useState<string | null>(null);
   const [showEmotionSlots, setShowEmotionSlots] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voiceName, setVoiceName] = useState<string>('');
+  const [voicePitch, setVoicePitch] = useState(1);
+  const [voiceRate, setVoiceRate] = useState(1);
+  const [showVoiceStudio, setShowVoiceStudio] = useState(false);
+
+  useEffect(() => {
+    if (isVoiceSupported()) {
+      getAvailableVoices().then(setAvailableVoices);
+    }
+  }, []);
 
   useEffect(() => {
     const refresh = () => setSaved(listCharacters());
@@ -81,6 +93,11 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
     const info = await fetchCharacterInfo(trimmed);
     setIsFetching(false);
 
+    const hasVoiceSettings = voiceName !== '' || voicePitch !== 1 || voiceRate !== 1;
+    const voiceSettings: VoiceSettings | undefined = hasVoiceSettings
+      ? { voiceName: voiceName || undefined, pitch: voicePitch, rate: voiceRate }
+      : undefined;
+
     const character = createCharacter({
       name: trimmed,
       behavior,
@@ -91,6 +108,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
       portraitUrl: portraitDataUrl || undefined,
       emotionPortraits: Object.keys(emotionPortraits).length > 0 ? emotionPortraits : undefined,
       themeColor: themeColor !== DEFAULT_THEME_COLOR ? themeColor : undefined,
+      voiceSettings,
     });
 
     onSelect(`personality:${character.behavior}:${character.name}:${character.id}`);
@@ -326,6 +344,65 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                 <p className="text-[11px] text-red-400 mt-2">{emotionError}</p>
               )}
             </div>
+
+            {/* Voice Studio - optional per-character voice tuning (Web Speech API, $0 cost) */}
+            {isVoiceSupported() && (
+              <div className="mb-3">
+                <button
+                  onClick={() => setShowVoiceStudio(v => !v)}
+                  className="text-xs text-slate-500 hover:text-amber-300 transition-colors flex items-center gap-1"
+                >
+                  {showVoiceStudio ? '\u2212' : '+'} Set a voice (optional)
+                </button>
+                {showVoiceStudio && (
+                  <div className="mt-2.5 bg-slate-900/50 border border-slate-700 rounded-lg p-3 space-y-3">
+                    <div>
+                      <span className="text-xs font-medium text-slate-500 mb-1.5 block">System voice</span>
+                      <select
+                        value={voiceName}
+                        onChange={(e) => setVoiceName(e.target.value)}
+                        className="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all"
+                      >
+                        <option value="">Browser default</option>
+                        {availableVoices.map(v => (
+                          <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className="block">
+                        <span className="text-xs font-medium text-slate-500 mb-1.5 flex justify-between">
+                          <span>Pitch</span><span>{voicePitch.toFixed(1)}</span>
+                        </span>
+                        <input
+                          type="range" min={0} max={2} step={0.1}
+                          value={voicePitch}
+                          onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
+                          className="w-full accent-amber-500"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-medium text-slate-500 mb-1.5 flex justify-between">
+                          <span>Speed</span><span>{voiceRate.toFixed(1)}</span>
+                        </span>
+                        <input
+                          type="range" min={0.5} max={2} step={0.1}
+                          value={voiceRate}
+                          onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
+                          className="w-full accent-amber-500"
+                        />
+                      </label>
+                    </div>
+                    <button
+                      onClick={() => speak(`Hello, I'm ${characterName.trim() || 'your character'}.`, { voiceName: voiceName || undefined, pitch: voicePitch, rate: voiceRate })}
+                      className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg px-3 py-1.5 transition-colors"
+                    >
+                      ▶ Preview voice
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Seed context, only when forking */}
             {forkSource && (
