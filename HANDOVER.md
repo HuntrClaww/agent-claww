@@ -149,11 +149,11 @@ README.md
 | Google Cloud TTS | 4M chars/mo standard | **Requires credit card to activate** | No | Ruled out — violates hard constraint |
 
 **Build plan (revised, free-first):**
-- [x] Voice engine: Web Speech API (`SpeechSynthesis`) — data model added
+- [x] Voice engine: Web Speech API (`SpeechSynthesis`) — playback engine built (voiceEngine.ts)
 - [x] Per-character voice settings stored on `SavedCharacter`: selected system voice name, pitch, rate
 - [ ] Voice Studio section in character creation: pick from available system voices, live preview button
 - [ ] "Voice Mode" / "Call" toggle in chat toolbar → reads AI responses aloud automatically
-- [ ] Sentence-boundary chunking (buffer until `.!?`) so long responses start speaking before the full reply finishes generating
+- [x] Sentence-boundary chunking helper built (`splitIntoSentences()` in voiceEngine.ts) — not yet wired into ChatWindow send flow
 - [ ] Mic input (optional, later): `SpeechRecognition` API — also browser-native, $0
 - [ ] **Deferred, needs real API key from user:** ElevenLabs integration for true voice cloning — user provides their own free-tier ElevenLabs key in Settings (same pattern as the existing AI provider keys), never a payment method
 - [ ] Voice orb visualizer: CSS scale or canvas tied to `AnalyserNode` frequency data — client-side only, no cost implication
@@ -257,6 +257,7 @@ README.md
 | 25 | **BUG FIX #4:** Generic Mode session cache | ChatWindow.tsx | `genericCharacterCache` useRef Map — cache hit skips fetch. Cleared on new chat. |
 | 26 | **REVIEW:** UserProfileModal rewrite | UserProfileModal.tsx | Full design-system alignment (teal→amber), avatar URL→file upload with compression, X close, Enter-to-save, hover overlay. |
 | 27 | **Phase 6 (1/N):** VoiceSettings data model | characterStore.ts | Added `VoiceSettings` type (voiceName/pitch/rate) + `isValidVoiceSettings()` guard on `SavedCharacter`. Foundation only, no UI yet. |
+| 28 | **Phase 6 (2/N):** voiceEngine.ts playback wrapper | voiceEngine.ts | Web Speech API wrapper: `getAvailableVoices()`, `speak()`, `speakQueue()`, `stopSpeaking()`, `isSpeaking()`, `splitIntoSentences()`. Zero cost, no signup. Not yet wired into UI. |
 
 ---
 
@@ -316,10 +317,9 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 
 1. **Phase 6 — Voice & Audio System** (see Section 6 above for full spec + research table)
    - [x] VoiceSettings data model added to characterStore.ts
-   - [ ] Web Speech API playback engine (speak AI responses aloud)
+   - [x] Web Speech API playback engine built (voiceEngine.ts)
    - [ ] Voice Studio UI in character creation (voice picker + live preview)
-   - [ ] Voice Mode toggle in chat toolbar
-   - [ ] Sentence-boundary chunking for streaming playback
+   - [ ] Voice Mode toggle in chat toolbar — wires speakQueue() into ChatWindow's AI response flow
    - [ ] Mic input (SpeechRecognition) — lower priority, after playback works
    - [ ] Avatar tool (Phase 8) remains explicitly deferred until Phase 6 is complete
 
