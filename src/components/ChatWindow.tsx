@@ -63,6 +63,11 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   // Generic Mode only: which character the AI is currently embodying
   const [genericCharacter, setGenericCharacter] = useState<string | null>(null);
 
+  // Generic Mode session cache: maps normalised character name → fetched CharacterInfo.
+  // Persists for the lifetime of this chat session (cleared on handleNewChat).
+  // Prevents re-fetching the same character if the user switches away and back.
+  const genericCharacterCache = useRef<Map<string, import('../lib/characterFetch').CharacterInfo | null>>(new Map());
+
   // Current portrait emotion (Personality Mode only) - reflects the AI's most recent message
   const [currentEmotion, setCurrentEmotion] = useState<Emotion>('neutral');
   
@@ -158,6 +163,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     setIsTyping(false);
     setActiveMode(null);
     setGenericCharacter(null);
+    genericCharacterCache.current.clear();
     setCurrentEmotion('neutral');
     setMessages([]);
     setIsSidebarOpen(false);
@@ -186,9 +192,20 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     if (activeMode?.kind === 'generic') {
       const switchTo = detectCharacterSwitch(prompt);
       if (switchTo) {
-        setApiStatus('loading');
-        setApiMessage(`Looking up ${switchTo}...`);
-        const info = await fetchCharacterInfo(switchTo);
+        const cacheKey = switchTo.toLowerCase().trim();
+        let info: import('../lib/characterFetch').CharacterInfo | null | undefined =
+          genericCharacterCache.current.get(cacheKey);
+
+        if (info === undefined) {
+          // Cache miss — fetch and store (null stored on miss so we don't re-fetch)
+          setApiStatus('loading');
+          setApiMessage(`Looking up ${switchTo}...`);
+          info = await fetchCharacterInfo(switchTo);
+          genericCharacterCache.current.set(cacheKey, info ?? null);
+        } else {
+          console.log(`[genericCache] Cache hit for "${switchTo}" — skipping fetch`);
+        }
+
         if (info) {
           character = info.name;
           extraContext = [info.summary, info.personality, info.background]
