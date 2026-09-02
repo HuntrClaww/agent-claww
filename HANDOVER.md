@@ -148,7 +148,12 @@ README.md
 
 **Decision (2026-09-02):** No free, reputable voice-cloning option exists. Proceeding with Web Speech API (primary, $0, unlimited) + Free.ai TTS as a secondary voice-picker option (30k tokens/day, resets daily). Pitch/rate tuning is the practical substitute for "sounds like them" without true cloning.
 
-**Future idea (not yet scoped):** a tool that analyzes an uploaded voice sample and depicts its pitch/rate/tonal characteristics, to help the user manually tune a character's Web Speech API settings closer to how the source voice actually sounds — an assisted-approximation system rather than true cloning. Unclear whether this needs AI or a simpler audio-analysis approach (e.g. Web Audio API `AnalyserNode` pitch detection). Flagged for later scoping.
+**Built 2026-09-02 (`voiceAnalysis.ts`):** analysis-assist tool for pitch/rate. Uploads an audio sample, runs autocorrelation-based pitch detection (median across overlapping windows) and amplitude-envelope-based syllable rate estimation, maps both onto the existing 0-2 pitch / 0.5-2 rate sliders as a suggested starting point. Explicitly documented as NOT cloning — confidence is always 'low' or 'medium', never 'high'. Wired into Voice Studio UI in CharacterSelect.tsx.
+
+**Confirmed 3-part roadmap (user direction, 2026-09-02), in order:**
+1. ✅ Pitch/rate analysis-assist tool — DONE (above)
+2. ⏳ Prosody/pacing improvements — punctuation-aware pauses, natural pacing tied to emotional expression (anger, calm happiness, etc.) using the existing emotion-detection system. IN PROGRESS NEXT.
+3. ⏳ Voice package portability — make voice settings survive across browsers/devices/OSes, ideally compatible with standard device-level custom TTS voice systems. LAST, not yet started.
 | Azure F0 | 500k chars/mo free | Azure account + billing setup (friction) | No | Deprioritized — setup friction |
 | Google Cloud TTS | 4M chars/mo standard | **Requires credit card to activate** | No | Ruled out — violates hard constraint |
 
@@ -266,6 +271,8 @@ README.md
 | 30 | **Phase 6 (4/N):** Voice Mode toggle — core playback loop complete | ChatWindow.tsx | `voiceModeOn` toggle (persisted, mobile+desktop headers). AI responses now speak aloud via `speakQueue(splitIntoSentences())` on arrival. Personality Mode uses saved character voiceSettings; Generic Mode uses browser default. `stopSpeaking()` on toggle-off and new chat. |
 | 31 | **Phase 6 (5/N):** Mic input engine | voiceEngine.ts | Added `isMicSupported()`, `startListening()`, `stopListening()` with minimal ambient `SpeechRecognition` TS types. Browser-native, zero cost. |
 | 32 | **Phase 6 (6/N):** Mic button wired into chat | ChatWindow.tsx | Mic button next to Send, gated by `isMicSupported()`. Live interim transcripts, auto-stop on final result, `stopListening()` on new chat. Phase 6 core loop complete both directions (speak-to-send + Voice Mode read-back). |
+| 33 | **Phase 6 (7/N):** Voice analysis-assist engine | voiceAnalysis.ts | Autocorrelation pitch detection (median across windows) + amplitude-envelope syllable rate estimation. Maps both to pitch/rate slider ranges. Explicitly NOT cloning — confidence capped at 'medium'. |
+| 34 | **Phase 6 (8/N):** Voice analysis UI wiring | CharacterSelect.tsx | "Upload sample" section in Voice Studio: shows estimated pitch/pace/confidence, "Apply suggested" button sets sliders. Clear non-cloning disclaimer in UI copy. |
 
 ---
 
@@ -329,12 +336,15 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
    - [x] Voice Studio UI in character creation (voice picker + live preview)
    - [x] Mic input (SpeechRecognition) — wired into chat input
 
-**Phase 6 core build is complete.** Remaining open item is the voice-sample
-analysis concept below (not yet scoped — needs a dedicated design session,
-not a quick add). Otherwise Phase 6 is ready for real-device testing
-across browsers (mobile Safari mic support in particular should be
-verified — desktop Chrome/Edge confirmed working during dev).
+**Phase 6 core build (playback + mic) is complete.** Now extending with a
+3-part user-directed plan: (1) voice analysis-assist ✅ done, (2) prosody/
+pacing for emotional expression — IN PROGRESS, (3) voice package
+portability — not started. Real-device/cross-browser testing (especially
+mobile Safari mic support) is still outstanding and should happen before
+calling Phase 6 fully closed.
 
+   - [x] Voice analysis-assist tool (voiceAnalysis.ts + Voice Studio UI)
+   - [ ] Prosody/pacing improvements — punctuation-aware pauses, pacing tied to emotion (anger, calm happiness, etc.) — NEXT
+   - [ ] Voice package portability — cross-device/browser compatible voice settings, ideally interoperable with device-level custom TTS systems — LAST
    - [ ] Avatar tool (Phase 8) remains explicitly deferred until Phase 6 is complete
-   - [ ] Voice-sample analysis idea (pitch/tone depiction to aid manual tuning) — not yet scoped
 
