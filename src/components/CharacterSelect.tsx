@@ -3,7 +3,7 @@ import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2,
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { createCharacter, listCharacters, deleteCharacter, PORTRAIT_MAX_KB, EMOTION_PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode, type VoiceSettings } from '../lib/characterStore';
 import { compressPortrait } from '../lib/imageCompress';
-import { getAvailableVoices, speak, isVoiceSupported } from '../lib/voiceEngine';
+import { getAvailableVoices, speak, isVoiceSupported, downloadVoicePackage, parseVoicePackage } from '../lib/voiceEngine';
 import { analyzeVoiceSample, type VoiceAnalysisResult } from '../lib/voiceAnalysis';
 import { EMOTION_EMOJI, type Emotion } from '../lib/emotionDetect';
 
@@ -35,6 +35,8 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [voiceAnalysisError, setVoiceAnalysisError] = useState<string | null>(null);
   const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
   const voiceSampleInputRef = useRef<HTMLInputElement>(null);
+  const voicePackageInputRef = useRef<HTMLInputElement>(null);
+  const [voicePackageError, setVoicePackageError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isVoiceSupported()) {
@@ -62,6 +64,30 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
       setVoiceAnalysisError('Analysis failed. Try a different audio file.');
     } finally {
       setIsAnalyzingVoice(false);
+    }
+  };
+
+  const handleVoicePackageFile = async (file: File | undefined) => {
+    setVoicePackageError(null);
+    if (!file) return;
+    if (!file.type.includes('json') && !file.name.endsWith('.json')) {
+      setVoicePackageError('Please choose a .json voice package file.');
+      return;
+    }
+    try {
+      const text = await file.text();
+      const parsed = parseVoicePackage(text);
+      if (!parsed) {
+        setVoicePackageError("That file doesn't look like a valid voice package.");
+        return;
+      }
+      setVoiceName(parsed.voiceName || '');
+      setVoiceLang(parsed.lang || '');
+      setVoicePitch(parsed.pitch);
+      setVoiceRate(parsed.rate);
+    } catch (err) {
+      console.warn('[CharacterSelect] Voice package import failed:', err);
+      setVoicePackageError('Could not read that file.');
     }
   };
 
@@ -433,6 +459,35 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                     >
                       ▶ Preview voice
                     </button>
+
+                    {/* Voice package export/import - reuse a tuned voice across characters */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => downloadVoicePackage({ voiceName: voiceName || undefined, lang: voiceLang || undefined, pitch: voicePitch, rate: voiceRate }, characterName.trim() || undefined)}
+                        className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg px-3 py-1.5 transition-colors"
+                      >
+                        ⬇ Export voice
+                      </button>
+                      <button
+                        onClick={() => voicePackageInputRef.current?.click()}
+                        className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg px-3 py-1.5 transition-colors"
+                      >
+                        ⬆ Import voice
+                      </button>
+                      <input
+                        ref={voicePackageInputRef}
+                        type="file"
+                        accept="application/json"
+                        className="hidden"
+                        onChange={(e) => handleVoicePackageFile(e.target.files?.[0])}
+                      />
+                    </div>
+                    {voicePackageError && (
+                      <p className="text-[11px] text-red-400">{voicePackageError}</p>
+                    )}
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                      Export saves this voice's settings so you can reuse them on another character. It doesn't install a new voice on any device — just carries the pitch, speed, and voice choice, matched to the closest available voice on import.
+                    </p>
 
                     {/* Analysis-assist: measure a sample, suggest slider values. NOT cloning. */}
                     <div className="pt-2.5 border-t border-slate-700/60">
