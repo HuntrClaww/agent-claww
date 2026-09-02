@@ -159,15 +159,25 @@ README.md
 - [ ] Zero-gating philosophy applies here too: full access on day one, no XP/level locks
 - [ ] Supabase schema needed: `coaching_sessions`, `user_skills` tables (SQL draft exists in Gemini chat)
 
-### Phase 8 — Animated Avatar / VTuber System ⏳ PENDING (future, advanced)
-- [ ] Static Mode (default): 2D emotion sprites — already built in Phase 2
+### Phase 8 — Avatar Creation & Customization Tool ⏳ PENDING (future, deferred until after Phase 6)
+**Confirmed scope (2026-09-02 discussion with user):**
+- Core idea: user uploads ANY custom image — original art, a famous actor in a specific role, any character — and it gets transformed into a 2D avatar
+- Output can be either animated OR broken into multiple frames to express different emotions (ties into existing `emotionPortraits` sparse-slot system from Phase 3)
+- Combines both an in-app builder (style/feature customization) AND possible AI-driven image generation/transformation from the uploaded source
+- **Open concern from user:** this is a heavy-free-tier web app — need to carefully research which AI image generation/transformation tools have usable free tiers, or consider building a lightweight custom solution that works within free-tier constraints (cost is the primary blocker, not concept)
+- Not yet spec'd in technical detail — needs a dedicated scoping session before implementation starts
+
+**Prior technical notes (from earlier design discussion, still relevant):**
+- [ ] Static Mode (default): 2D emotion sprites — already built in Phase 2/3
 - [ ] Live Mode (toggle): animated avatar replaces sprite panel
-- [ ] Technology: Live2D Cubism WebGL SDK or PixiJS with .moc3 model files
+- [ ] Technology candidates: Live2D Cubism WebGL SDK, PixiJS with .moc3 model files
 - [ ] Lip-sync: TTS engines provide viseme timestamps → passed to Live2D jaw controller
-- [ ] Free open-source alternatives: SadTalker, LivePortrait, Hallo (image + audio → animated video)
-- [ ] Architecture: TTS audio → hosted SadTalker/LivePortrait API → .mp4 stream played in chat
-- [ ] Client-side alternative: talkinghead.js / Canvas 2D mesh morphing (no server cost, instant playback)
+- [ ] Free/open-source transformation candidates to research: SadTalker, LivePortrait, Hallo (image + audio → animated video) — verify current free-tier/self-host feasibility before committing
+- [ ] Architecture option: TTS audio → hosted SadTalker/LivePortrait API → .mp4 stream played in chat
+- [ ] Client-side alternative (no server cost): talkinghead.js / Canvas 2D mesh morphing — likely the safer free-tier-first starting point
 - [ ] Face landmark detection: lightweight JS library for auto-cropping on upload
+
+**Explicitly deferred until Phase 6 (Voice & Audio) is complete.**
 
 ### Phase 9 — Backend / Data Sovereignty ⏳ DEFERRED
 - [ ] Move all character data from localStorage to Supabase (user-scoped, row-level security)
