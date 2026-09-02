@@ -12,6 +12,7 @@
  */
 
 import type { VoiceSettings } from './characterStore';
+import type { Emotion } from './emotionDetect';
 
 // Minimal ambient types for the Web Speech API's SpeechRecognition -
 // not part of TypeScript's default DOM lib. Only the members this
@@ -138,6 +139,140 @@ export async function speakQueue(chunks: string[], settings?: VoiceSettings): Pr
 
       window.speechSynthesis.speak(utterance);
     });
+  }
+}
+
+// --- Prosody / pacing (emotion-aware expressive speech) --------------
+//
+// Web Speech API has no SSML support, so there's no way to mark up
+// "pause here" or "say this angrily" directly. What IS controllable
+// per-utterance is pitch, rate, and volume - and the JS side fully
+// controls timing between utterances. So expressive speech here means:
+//   1. Split text into small clauses at punctuation boundaries
+//   2. Insert a timed silence after each clause, sized to the
+//      punctuation (comma = short pause, period = longer, ellipsis =
+//      longest) and scaled by the character's current emotion
+//   3. Nudge pitch/rate/volume per emotion on top of the character's
+//      own base voice settings, rather than overriding them
+//
+// This is a real, audible improvement over flat monotone TTS, but it
+// is NOT the same as neural prosody modeling (what Claude/ChatGPT/
+// Gemini voice mode use server-side) - it's punctuation- and
+// emotion-driven heuristics, entirely client-side and free.
+
+interface ProsodyProfile {
+  pitchMul: number;  // multiplies the character's base pitch
+  rateMul: number;   // multiplies the character's base rate
+  pauseMul: number;  // multiplies the punctuation-driven pause length
+  volume: number;    // 0 - 1, absolute (not a multiplier)
+}
+
+// Tuned by feel, not measurement - these are heuristic starting points
+// meant to be adjusted based on how they actually sound in practice.
+const EMOTION_PROSODY: Record<Emotion, ProsodyProfile> = {
+  neutral:     { pitchMul: 1.00, rateMul: 1.00, pauseMul: 1.00, volume: 1.00 },
+  happy:       { pitchMul: 1.12, rateMul: 1.08, pauseMul: 0.85, volume: 1.00 },
+  sad:         { pitchMul: 0.85, rateMul: 0.82, pauseMul: 1.30, volume: 0.85 },
+  angry:       { pitchMul: 1.05, rateMul: 1.25, pauseMul: 0.60, volume: 1.00 },
+  surprised:   { pitchMul: 1.25, rateMul: 1.10, pauseMul: 0.90, volume: 1.00 },
+  confused:    { pitchMul: 0.95, rateMul: 0.85, pauseMul: 1.15, volume: 0.95 },
+  embarrassed: { pitchMul: 1.08, rateMul: 0.90, pauseMul: 1.10, volume: 0.80 },
+  thinking:    { pitchMul: 0.92, rateMul: 0.78, pauseMul: 1.40, volume: 0.90 },
+  romantic:    { pitchMul: 0.95, rateMul: 0.80, pauseMul: 1.25, volume: 0.85 },
+  fearful:     { pitchMul: 1.15, rateMul: 1.15, pauseMul: 0.75, volume: 0.90 },
+};
+
+interface ProsodyChunk {
+  text: string;
+  pauseAfterMs: number;
+}
+
+/** Base pause length in ms for a given trailing punctuation mark. */
+function basePauseForPunctuation(trailing: string): number {
+  if (trailing.includes('...') || trailing.includes('\u2026')) return 550;
+  if (/[.!?]/.test(trailing)) return 380;
+  if (/[,;:]/.test(trailing)) return 150;
+  return 80; // default small gap so back-to-back clauses don't run together
+}
+
+/**
+ * Splits text into small clause-level chunks at punctuation boundaries
+ * (commas, semicolons, colons, sentence-enders, ellipses), and computes
+ * a pause duration after each based on the punctuation type and the
+ * given emotion's pacing profile.
+ */
+export function buildProsodyPlan(text: string, emotion: Emotion = 'neutral'): ProsodyChunk[] {
+  const cleaned = text.trim();
+  if (!cleaned) return [];
+
+  const profile = EMOTION_PROSODY[emotion] ?? EMOTION_PROSODY.neutral;
+
+  // Capture each clause together with its trailing punctuation
+  const raw = cleaned.match(/[^,;:.!?]+(?:\.\.\.|[,;:.!?])*/g) ?? [cleaned];
+
+  return raw
+    .map(part => part.trim())
+    .filter(Boolean)
+    .map(part => {
+      const trailingMatch = part.match(/(\.\.\.|[,;:.!?]+)$/);
+      const trailing = trailingMatch ? trailingMatch[0] : '';
+      const pauseAfterMs = Math.round(basePauseForPunctuation(trailing) * profile.pauseMul);
+      return { text: part, pauseAfterMs };
+    });
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * Speaks text with emotion-aware pacing: clause-level chunking, timed
+ * pauses sized to punctuation and scaled by emotion, and pitch/rate/
+ * volume nudged per emotion on top of the character's own base voice
+ * settings (never replacing them - a character's identity stays intact,
+ * emotion just colors the delivery).
+ *
+ * This is the function ChatWindow should use for AI responses instead
+ * of the plain speakQueue(), once an emotion has been detected.
+ */
+export async function speakExpressive(
+  text: string,
+  settings?: VoiceSettings,
+  emotion: Emotion = 'neutral'
+): Promise<void> {
+  if (!isVoiceSupported()) return;
+
+  const profile = EMOTION_PROSODY[emotion] ?? EMOTION_PROSODY.neutral;
+  const basePitch = settings?.pitch ?? 1;
+  const baseRate = settings?.rate ?? 1;
+
+  const effectivePitch = clamp(basePitch * profile.pitchMul, 0, 2);
+  const effectiveRate = clamp(baseRate * profile.rateMul, 0.1, 10);
+  const effectiveVolume = clamp(profile.volume, 0, 1);
+
+  const plan = buildProsodyPlan(text, emotion);
+
+  for (const chunk of plan) {
+    await new Promise<void>(resolve => {
+      const utterance = new SpeechSynthesisUtterance(chunk.text);
+      utterance.pitch = effectivePitch;
+      utterance.rate = effectiveRate;
+      utterance.volume = effectiveVolume;
+
+      if (settings?.voiceName) {
+        const match = cachedVoices.find(v => v.name === settings.voiceName);
+        if (match) utterance.voice = match;
+      }
+
+      utterance.onend = () => resolve();
+      utterance.onerror = () => resolve();
+
+      window.speechSynthesis.speak(utterance);
+    });
+
+    if (chunk.pauseAfterMs > 0) {
+      await new Promise<void>(resolve => setTimeout(resolve, chunk.pauseAfterMs));
+    }
   }
 }
 
