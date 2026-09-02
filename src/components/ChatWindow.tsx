@@ -8,7 +8,7 @@ import { APIClient, detectAPIProvider } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
 import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
-import { speakQueue, stopSpeaking, splitIntoSentences, isVoiceSupported, isMicSupported, startListening, stopListening } from '../lib/voiceEngine';
+import { speakExpressive, stopSpeaking, isVoiceSupported, isMicSupported, startListening, stopListening } from '../lib/voiceEngine';
 
 // Define what a single message looks like
 interface Message {
@@ -285,14 +285,16 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     }
     setIsTyping(false);
 
-    // Voice Mode: speak the response aloud. Personality Mode characters
-    // may have their own voiceSettings saved; Generic Mode always uses
-    // the browser default voice since fetched characters aren't stored.
+    // Voice Mode: speak the response aloud with emotion-aware pacing.
+    // Personality Mode characters may have their own voiceSettings saved;
+    // Generic Mode always uses the browser default voice since fetched
+    // characters aren't stored. `emotion` (already detected above for the
+    // portrait panel) drives pitch/rate/pause nudges via speakExpressive.
     if (voiceModeOn && isVoiceSupported() && cleanedText.trim()) {
       const savedChar = activeMode?.kind === 'personality' && activeMode.characterId
         ? getCharacter(activeMode.characterId)
         : undefined;
-      speakQueue(splitIntoSentences(cleanedText), savedChar?.voiceSettings);
+      speakExpressive(cleanedText, savedChar?.voiceSettings, emotion);
     }
   };
 
