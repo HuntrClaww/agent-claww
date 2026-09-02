@@ -232,6 +232,7 @@ README.md
 | 21 | HANDOVER.md created | repo root | This file — persistent session continuity document |
 | 22 | **BUG FIX #1:** Profanity tolerance wired | apiClient.ts | `buildSystemPrompt()` now reads `profanity_filter` from localStorage and appends the appropriate instruction (strict/off/moderate). Was purely decorative before. |
 | 23 | **BUG FIX #2:** Fandom endpoint + fetch logging | characterFetch.ts | Fixed broken Fandom URL (was HTML page, not JSON). Added visible `[characterFetch]` console warnings at every failure/fallback point in all three sources and the orchestrator. |
+| 24 | **BUG FIX #3:** Portrait auto-compression | imageCompress.ts, CharacterSelect.tsx | New Canvas-based compress utility. Both upload handlers now compress before size check. Large photos silently fit instead of hard-rejecting. |
 
 ---
 
@@ -241,7 +242,7 @@ README.md
 |---|-------|--------|------|-------------|
 | 1 | Profanity tolerance is decorative | **HANDLED** | apiClient.ts | Fixed. `buildSystemPrompt()` now reads `localStorage.getItem('profanity_filter')`: strict → clean language instruction appended; off → natural profanity allowed; moderate (default) → no instruction, character judgment used. |
 | 2 | Fandom fetch endpoint unverified | **HANDLED** | characterFetch.ts | Fixed endpoint from HTML search page to `/api/v1/Search/List` (actual JSON API). Added `[characterFetch]` prefixed `console.warn` in every catch block and every empty-result branch. Orchestrator logs each step (✓ resolved / ✗ exhausted) so CORS failures are visible in devtools instead of silently swallowed. |
-| 3 | No image compression on upload | **PENDING** | CharacterSelect.tsx | Large phone photos (3–8MB) hit the 500KB cap and get flatly rejected. Should auto-compress using `canvas.toBlob()` before the size check, so the image is resized to fit rather than rejected. |
+| 3 | No image compression on upload | **HANDLED** | imageCompress.ts, CharacterSelect.tsx | New `imageCompress.ts`: Canvas compress (resize to 512px, JPEG quality 0.85→0.35). Both portrait and emotion-slot handlers now compress first, only show error if still over cap at minimum quality. |
 | 4 | Generic Mode character history is stateless | **PENDING** | ChatWindow.tsx | Each "be X" switch is fresh. If user says "be Naruto", chats, then says "be Sherlock", then "be Naruto again" — all Naruto context from the first session is gone. Needs `genericCharacterHistory: Record<string, CharacterInfo>` state to cache prior fetches within a session. |
 | 5 | `UserProfileModal.tsx` never reviewed | **PENDING** | UserProfileModal.tsx | File exists since session 1. Completely unreviewed. May contain outdated references or need alignment with the current design system. Unknown scope — review before next major feature. |
 | 6 | OpenAI system prompt field | **HANDLED** | apiClient.ts | Was `system: systemPrompt` at top level (OpenAI API ignores this). Fixed to `{ role: 'system', content: systemPrompt }` inside `messages[]`. |
@@ -287,8 +288,7 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 
 ## 9. Priority Order for Next Session
 
-1. **Fix #3:** Auto-compress portrait images on upload before size cap check — ~15 min
-2. **Fix #4:** Generic Mode character fetch history (cache fetches within session) — ~20 min
-3. **Review:** `UserProfileModal.tsx` — unknown scope, review and align with current design
-4. **Then:** Begin Phase 6 (Voice/Audio) when all PENDING bugs are cleared
+1. **Fix #4:** Generic Mode character fetch history (cache fetches within session) — ~20 min
+2. **Review:** `UserProfileModal.tsx` — unknown scope, review and align with current design
+3. **Then:** Begin Phase 6 (Voice/Audio) when all PENDING bugs are cleared
 
