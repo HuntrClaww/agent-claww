@@ -13,6 +13,35 @@
 
 import type { VoiceSettings } from './characterStore';
 
+// Minimal ambient types for the Web Speech API's SpeechRecognition -
+// not part of TypeScript's default DOM lib. Only the members this
+// file actually uses are declared.
+interface SpeechRecognitionResult {
+  readonly isFinal: boolean;
+  [index: number]: { transcript: string };
+}
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  [index: number]: SpeechRecognitionResult;
+}
+interface SpeechRecognitionEvent extends Event {
+  readonly resultIndex: number;
+  readonly results: SpeechRecognitionResultList;
+}
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string;
+}
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+}
+
 let cachedVoices: SpeechSynthesisVoice[] = [];
 let voicesReady = false;
 
@@ -139,4 +168,87 @@ export function splitIntoSentences(text: string): string[] {
   // and a capital letter or end of string.
   const matches = cleaned.match(/[^.!?]+[.!?]+(?=\s+[A-Z]|\s*$)|[^.!?]+$/g);
   return matches ? matches.map(s => s.trim()).filter(Boolean) : [cleaned];
+}
+
+// --- Mic input (SpeechRecognition) -----------------------------------
+// Also browser-native, also $0. Chrome/Edge support this well; Firefox
+// support is inconsistent, so isMicSupported() should always be checked
+// before showing a mic control.
+
+type SpeechRecognitionCtor = new () => SpeechRecognition;
+
+function getRecognitionCtor(): SpeechRecognitionCtor | null {
+  const w = window as unknown as {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+/** True if this browser supports speech-to-text mic input. */
+export function isMicSupported(): boolean {
+  return getRecognitionCtor() !== null;
+}
+
+let activeRecognition: SpeechRecognition | null = null;
+
+/**
+ * Starts listening on the mic and streams back partial + final
+ * transcripts via the callback. Returns a stop function the caller
+ * invokes to end listening early (e.g. user releases push-to-talk).
+ *
+ * Only one recognition session runs at a time - starting a new one
+ * stops any prior session first.
+ */
+export function startListening(
+  onResult: (transcript: string, isFinal: boolean) => void,
+  onEnd?: () => void
+): () => void {
+  const Ctor = getRecognitionCtor();
+  if (!Ctor) {
+    console.warn('[voiceEngine] SpeechRecognition not supported in this browser');
+    onEnd?.();
+    return () => {};
+  }
+
+  stopListening(); // only one session at a time
+
+  const recognition = new Ctor();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onresult = (event: SpeechRecognitionEvent) => {
+    let finalTranscript = '';
+    let interimTranscript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const result = event.results[i];
+      if (result.isFinal) finalTranscript += result[0].transcript;
+      else interimTranscript += result[0].transcript;
+    }
+    if (finalTranscript) onResult(finalTranscript, true);
+    else if (interimTranscript) onResult(interimTranscript, false);
+  };
+
+  recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    console.warn('[voiceEngine] SpeechRecognition error:', event.error);
+  };
+
+  recognition.onend = () => {
+    activeRecognition = null;
+    onEnd?.();
+  };
+
+  activeRecognition = recognition;
+  recognition.start();
+
+  return stopListening;
+}
+
+/** Stops the current mic listening session, if any. */
+export function stopListening(): void {
+  if (activeRecognition) {
+    activeRecognition.stop();
+    activeRecognition = null;
+  }
 }
