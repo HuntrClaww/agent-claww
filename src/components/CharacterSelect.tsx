@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2, ImagePlus, X } from 'lucide-react';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
-import { createCharacter, listCharacters, deleteCharacter, isPortraitSizeOk, isEmotionPortraitSizeOk, PORTRAIT_MAX_KB, EMOTION_PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode } from '../lib/characterStore';
+import { createCharacter, listCharacters, deleteCharacter, PORTRAIT_MAX_KB, EMOTION_PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode } from '../lib/characterStore';
+import { compressPortrait } from '../lib/imageCompress';
 import { EMOTION_EMOJI, type Emotion } from '../lib/emotionDetect';
 
 const DEFAULT_THEME_COLOR = '#f59e0b'; // matches the app's existing amber accent
@@ -34,42 +35,34 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
     onSelect(`personality:${character.behavior}:${character.name}:${character.id}`);
   };
 
-  const handlePortraitFile = (file: File | undefined) => {
+  const handlePortraitFile = async (file: File | undefined) => {
     setPortraitError(null);
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setPortraitError('Please choose an image file.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      if (!isPortraitSizeOk(dataUrl)) {
-        setPortraitError(`Image is too large (max ${PORTRAIT_MAX_KB}KB) — try a smaller or more compressed image.`);
-        return;
-      }
-      setPortraitDataUrl(dataUrl);
-    };
-    reader.readAsDataURL(file);
+    const dataUrl = await compressPortrait(file, PORTRAIT_MAX_KB * 1000);
+    if (!dataUrl) {
+      setPortraitError(`Image is too large and couldn't be compressed enough (max ${PORTRAIT_MAX_KB}KB). Try a different image.`);
+      return;
+    }
+    setPortraitDataUrl(dataUrl);
   };
 
-  const handleEmotionSlotFile = (emotion: Emotion, file: File | undefined) => {
+  const handleEmotionSlotFile = async (emotion: Emotion, file: File | undefined) => {
     setEmotionError(null);
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       setEmotionError('Please choose an image file.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      if (!isEmotionPortraitSizeOk(dataUrl)) {
-        setEmotionError(`Image is too large (max ${EMOTION_PORTRAIT_MAX_KB}KB per emotion) — try a smaller or more compressed image.`);
-        return;
-      }
-      setEmotionPortraits(prev => ({ ...prev, [emotion]: dataUrl }));
-    };
-    reader.readAsDataURL(file);
+    const dataUrl = await compressPortrait(file, EMOTION_PORTRAIT_MAX_KB * 1000);
+    if (!dataUrl) {
+      setEmotionError(`Image is too large and couldn't be compressed enough (max ${EMOTION_PORTRAIT_MAX_KB}KB). Try a different image.`);
+      return;
+    }
+    setEmotionPortraits(prev => ({ ...prev, [emotion]: dataUrl }));
   };
 
   const clearEmotionSlot = (emotion: Emotion) => {
