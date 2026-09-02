@@ -26,6 +26,10 @@ export type BehaviorMode = 'true-to-character' | 'off-script';
 // the browser's default voice rather than failing.
 export interface VoiceSettings {
   voiceName?: string; // SpeechSynthesisVoice.name, e.g. "Google UK English Male"
+  lang?: string;       // BCP-47 tag of the saved voice, e.g. "en-GB" - used as a
+                        // fallback-matching signal when voiceName isn't available
+                        // on a different browser/device/OS (voice names are NOT
+                        // portable across platforms - see voiceEngine.ts pickBestVoice)
   pitch: number;       // 0 - 2, default 1
   rate: number;         // 0.1 - 10, default 1
 }
