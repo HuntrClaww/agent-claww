@@ -234,6 +234,7 @@ README.md
 | 23 | **BUG FIX #2:** Fandom endpoint + fetch logging | characterFetch.ts | Fixed broken Fandom URL (was HTML page, not JSON). Added visible `[characterFetch]` console warnings at every failure/fallback point in all three sources and the orchestrator. |
 | 24 | **BUG FIX #3:** Portrait auto-compression | imageCompress.ts, CharacterSelect.tsx | New Canvas-based compress utility. Both upload handlers now compress before size check. Large photos silently fit instead of hard-rejecting. |
 | 25 | **BUG FIX #4:** Generic Mode session cache | ChatWindow.tsx | `genericCharacterCache` useRef Map — cache hit skips fetch. Cleared on new chat. |
+| 26 | **REVIEW:** UserProfileModal rewrite | UserProfileModal.tsx | Full design-system alignment (teal→amber), avatar URL→file upload with compression, X close, Enter-to-save, hover overlay. |
 
 ---
 
@@ -245,7 +246,7 @@ README.md
 | 2 | Fandom fetch endpoint unverified | **HANDLED** | characterFetch.ts | Fixed endpoint from HTML search page to `/api/v1/Search/List` (actual JSON API). Added `[characterFetch]` prefixed `console.warn` in every catch block and every empty-result branch. Orchestrator logs each step (✓ resolved / ✗ exhausted) so CORS failures are visible in devtools instead of silently swallowed. |
 | 3 | No image compression on upload | **HANDLED** | imageCompress.ts, CharacterSelect.tsx | New `imageCompress.ts`: Canvas compress (resize to 512px, JPEG quality 0.85→0.35). Both portrait and emotion-slot handlers now compress first, only show error if still over cap at minimum quality. |
 | 4 | Generic Mode character history is stateless | **HANDLED** | ChatWindow.tsx | Added `genericCharacterCache` (`useRef<Map>`) — session-scoped cache keyed by lowercased name. Cache hit skips fetch entirely. Cache miss fetches and stores (null stored on failure to prevent re-fetching). Cleared on `handleNewChat()`. |
-| 5 | `UserProfileModal.tsx` never reviewed | **PENDING** | UserProfileModal.tsx | File exists since session 1. Completely unreviewed. May contain outdated references or need alignment with the current design system. Unknown scope — review before next major feature. |
+| 5 | `UserProfileModal.tsx` never reviewed | **HANDLED** | UserProfileModal.tsx | Full rewrite: teal→amber design alignment, avatar URL field replaced with file upload + `compressPortrait()`, X close button, Enter-to-save, hover overlay on avatar, backdrop blur. |
 | 6 | OpenAI system prompt field | **HANDLED** | apiClient.ts | Was `system: systemPrompt` at top level (OpenAI API ignores this). Fixed to `{ role: 'system', content: systemPrompt }` inside `messages[]`. |
 | 7 | Character bio never sent to API (Personality Mode) | **HANDLED** | ChatWindow.tsx | `getCharacter()` called but `.summary/.personality/.background` never included in `extraContext`. Fixed. |
 | 8 | Fork seed context stored but unused | **HANDLED** | ChatWindow.tsx | `seedContext` persisted to store but never read into API calls. Fixed — now included in `extraContext` labeled as "Carried over from a previous character by the user's own choice". |
@@ -289,6 +290,11 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 
 ## 9. Priority Order for Next Session
 
-1. **Review:** `UserProfileModal.tsx` — unknown scope, review and align with current design
-2. **Then:** Begin Phase 6 (Voice/Audio) when all PENDING bugs are cleared
+**All known bugs cleared. Ready for Phase 6.**
+
+1. **Phase 6 — Voice & Audio System** (see Section 6 below for full spec)
+   - Text-to-speech per character using Web Speech API
+   - Per-character voice selection (pitch, rate, voice name stored with character)
+   - Push-to-talk or continuous mic input (Web Speech Recognition)
+   - Voice toggle in chat toolbar
 
