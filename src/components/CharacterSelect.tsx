@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2, ImagePlus, X } from 'lucide-react';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { createCharacter, listCharacters, deleteCharacter, PORTRAIT_MAX_KB, EMOTION_PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode, type VoiceSettings } from '../lib/characterStore';
 import { compressPortrait } from '../lib/imageCompress';
 import { getAvailableVoices, speak, isVoiceSupported } from '../lib/voiceEngine';
+import { analyzeVoiceSample, type VoiceAnalysisResult } from '../lib/voiceAnalysis';
 import { EMOTION_EMOJI, type Emotion } from '../lib/emotionDetect';
 
 const DEFAULT_THEME_COLOR = '#f59e0b'; // matches the app's existing amber accent
@@ -29,12 +30,39 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [voicePitch, setVoicePitch] = useState(1);
   const [voiceRate, setVoiceRate] = useState(1);
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
+  const [voiceAnalysisResult, setVoiceAnalysisResult] = useState<VoiceAnalysisResult | null>(null);
+  const [voiceAnalysisError, setVoiceAnalysisError] = useState<string | null>(null);
+  const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
+  const voiceSampleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isVoiceSupported()) {
       getAvailableVoices().then(setAvailableVoices);
     }
   }, []);
+
+  const handleVoiceSampleFile = async (file: File | undefined) => {
+    setVoiceAnalysisError(null);
+    setVoiceAnalysisResult(null);
+    if (!file) return;
+    if (!file.type.startsWith('audio/')) {
+      setVoiceAnalysisError('Please choose an audio file.');
+      return;
+    }
+    setIsAnalyzingVoice(true);
+    try {
+      const result = await analyzeVoiceSample(file);
+      setVoiceAnalysisResult(result);
+      if (result.confidence === 'low' && !result.estimatedPitchHz && !result.estimatedSyllablesPerSec) {
+        setVoiceAnalysisError("Couldn't detect clear speech in this clip — try a longer or clearer sample.");
+      }
+    } catch (err) {
+      console.warn('[CharacterSelect] Voice analysis failed:', err);
+      setVoiceAnalysisError('Analysis failed. Try a different audio file.');
+    } finally {
+      setIsAnalyzingVoice(false);
+    }
+  };
 
   useEffect(() => {
     const refresh = () => setSaved(listCharacters());
@@ -399,6 +427,52 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                     >
                       ▶ Preview voice
                     </button>
+
+                    {/* Analysis-assist: measure a sample, suggest slider values. NOT cloning. */}
+                    <div className="pt-2.5 border-t border-slate-700/60">
+                      <p className="text-[11px] text-slate-500 mb-2 leading-relaxed">
+                        Have an audio clip of how this character should sound? Upload it and we'll suggest pitch/speed starting points — this doesn't clone the voice, it just estimates and tunes the sliders above.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => voiceSampleInputRef.current?.click()}
+                          disabled={isAnalyzingVoice}
+                          className="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-lg px-3 py-1.5 transition-colors"
+                        >
+                          {isAnalyzingVoice ? 'Analyzing…' : '📎 Upload sample'}
+                        </button>
+                        <input
+                          ref={voiceSampleInputRef}
+                          type="file"
+                          accept="audio/*"
+                          className="hidden"
+                          onChange={(e) => handleVoiceSampleFile(e.target.files?.[0])}
+                        />
+                      </div>
+                      {voiceAnalysisError && (
+                        <p className="text-[11px] text-red-400 mt-1.5">{voiceAnalysisError}</p>
+                      )}
+                      {voiceAnalysisResult && (
+                        <div className="mt-2 text-[11px] text-slate-400 space-y-1">
+                          <p>
+                            Estimated pitch: {voiceAnalysisResult.estimatedPitchHz ? `${Math.round(voiceAnalysisResult.estimatedPitchHz)}Hz` : 'unclear'}
+                            {' · '}
+                            Estimated pace: {voiceAnalysisResult.estimatedSyllablesPerSec ? `${voiceAnalysisResult.estimatedSyllablesPerSec.toFixed(1)} syll/sec` : 'unclear'}
+                            {' · '}
+                            <span className="italic">confidence: {voiceAnalysisResult.confidence}</span>
+                          </p>
+                          <button
+                            onClick={() => {
+                              setVoicePitch(voiceAnalysisResult.suggestedPitch);
+                              setVoiceRate(voiceAnalysisResult.suggestedRate);
+                            }}
+                            className="text-amber-300 hover:text-amber-200 underline underline-offset-2"
+                          >
+                            Apply suggested pitch ({voiceAnalysisResult.suggestedPitch.toFixed(1)}) & speed ({voiceAnalysisResult.suggestedRate.toFixed(1)})
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
