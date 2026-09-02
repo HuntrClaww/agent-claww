@@ -144,7 +144,11 @@ README.md
 | Web Speech API (browser-native) | $0 forever | No signup at all | No | **Chosen starting point** — zero setup, zero limits |
 | Edge TTS (open-source wrapper) | $0 | No signup | No | Backup option, community tooling not official |
 | Free.ai TTS | 30k tokens/day free | No card | No | Possible later upgrade, needs email signup |
-| ElevenLabs | Small free tier (~10k chars/mo) | Signup only for free plan | **Yes — real voice cloning** | The eventual cloning option once basic voice system is live; free quota is small, needs testing |
+| ElevenLabs | Small free tier (~10k chars/mo) | Signup only for free plan | **No on free tier** — cloning requires paid Starter ($5/mo); free tier only offers Voice Design (synthetic voice from text description) | **Decision: skip real cloning for now** — conflicts with no-payment-method rule. Documented as a future paid option only if user chooses to pay later. |
+
+**Decision (2026-09-02):** No free, reputable voice-cloning option exists. Proceeding with Web Speech API (primary, $0, unlimited) + Free.ai TTS as a secondary voice-picker option (30k tokens/day, resets daily). Pitch/rate tuning is the practical substitute for "sounds like them" without true cloning.
+
+**Future idea (not yet scoped):** a tool that analyzes an uploaded voice sample and depicts its pitch/rate/tonal characteristics, to help the user manually tune a character's Web Speech API settings closer to how the source voice actually sounds — an assisted-approximation system rather than true cloning. Unclear whether this needs AI or a simpler audio-analysis approach (e.g. Web Audio API `AnalyserNode` pitch detection). Flagged for later scoping.
 | Azure F0 | 500k chars/mo free | Azure account + billing setup (friction) | No | Deprioritized — setup friction |
 | Google Cloud TTS | 4M chars/mo standard | **Requires credit card to activate** | No | Ruled out — violates hard constraint |
 
