@@ -423,3 +423,85 @@ export function stopListening(): void {
     activeRecognition = null;
   }
 }
+
+// --- Voice package export/import (portability) ------------------------
+//
+// IMPORTANT — what this is and isn't: a browser cannot install a new
+// TTS voice onto a device. The Web Speech API only reads whatever
+// voices the OS already has installed; there is no web API to add one.
+// (Confirmed via research — see HANDOVER.md Phase 6.) So "exporting a
+// voice" here means exporting the character's PORTABLE SETTINGS
+// (which voice was selected + its language + pitch/rate), not the
+// voice itself. On import, pickBestVoice() re-resolves those settings
+// against whatever voices actually exist on the importing device -
+// exact match if the same voice happens to be installed there, else
+// the graceful language-based fallback.
+
+export interface VoicePackage {
+  formatVersion: 1;
+  characterName?: string;
+  voiceName?: string;
+  lang?: string;
+  pitch: number;
+  rate: number;
+}
+
+/** Builds a portable voice package object from a character's voice settings. */
+export function exportVoicePackage(settings: VoiceSettings, characterName?: string): VoicePackage {
+  return {
+    formatVersion: 1,
+    characterName,
+    voiceName: settings.voiceName,
+    lang: settings.lang,
+    pitch: settings.pitch,
+    rate: settings.rate,
+  };
+}
+
+/**
+ * Triggers a browser download of a character's voice settings as a
+ * .json file the user can save, share, or re-import later (including
+ * on a different device/browser).
+ */
+export function downloadVoicePackage(settings: VoiceSettings, characterName?: string): void {
+  const pkg = exportVoicePackage(settings, characterName);
+  const json = JSON.stringify(pkg, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safeName = (characterName || 'character').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  a.href = url;
+  a.download = `${safeName || 'character'}-voice.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Parses a voice package JSON string back into VoiceSettings. Returns
+ * null (rather than throwing) on malformed input, so the caller can
+ * show a friendly error instead of crashing the import flow.
+ */
+export function parseVoicePackage(jsonText: string): VoiceSettings | null {
+  try {
+    const parsed = JSON.parse(jsonText) as Partial<VoicePackage>;
+    if (typeof parsed.pitch !== 'number' || typeof parsed.rate !== 'number') {
+      console.warn('[voiceEngine] Voice package missing required pitch/rate fields');
+      return null;
+    }
+    if (parsed.pitch < 0 || parsed.pitch > 2 || parsed.rate < 0.1 || parsed.rate > 10) {
+      console.warn('[voiceEngine] Voice package pitch/rate out of valid range');
+      return null;
+    }
+    return {
+      voiceName: typeof parsed.voiceName === 'string' ? parsed.voiceName : undefined,
+      lang: typeof parsed.lang === 'string' ? parsed.lang : undefined,
+      pitch: parsed.pitch,
+      rate: parsed.rate,
+    };
+  } catch (err) {
+    console.warn('[voiceEngine] Failed to parse voice package:', err);
+    return null;
+  }
+}
