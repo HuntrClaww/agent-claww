@@ -3,12 +3,12 @@ import SettingsModal from './SettingsModal';
 import CharacterSelect from './CharacterSelect';
 import CharacterPortrait from './CharacterPortrait';
 import Sidebar from './Sidebar';
-import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX } from 'lucide-react';
+import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
 import { APIClient, detectAPIProvider } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
 import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
-import { speakQueue, stopSpeaking, splitIntoSentences, isVoiceSupported } from '../lib/voiceEngine';
+import { speakQueue, stopSpeaking, splitIntoSentences, isVoiceSupported, isMicSupported, startListening, stopListening } from '../lib/voiceEngine';
 
 // Define what a single message looks like
 interface Message {
@@ -79,6 +79,28 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       if (!next) stopSpeaking(); // turning off mid-speech should cut it immediately
       return next;
     });
+  };
+
+  // Mic input: push-to-toggle. Interim results update the input live;
+  // final results replace it and stop listening.
+  const [isListening, setIsListening] = useState(false);
+  const toggleMic = () => {
+    if (isListening) {
+      stopListening();
+      setIsListening(false);
+      return;
+    }
+    setIsListening(true);
+    startListening(
+      (transcript, isFinal) => {
+        setInputText(transcript.slice(0, 2000));
+        if (isFinal) {
+          stopListening();
+          setIsListening(false);
+        }
+      },
+      () => setIsListening(false)
+    );
   };
 
   // Current portrait emotion (Personality Mode only) - reflects the AI's most recent message
@@ -178,6 +200,8 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     setGenericCharacter(null);
     genericCharacterCache.current.clear();
     stopSpeaking();
+    stopListening();
+    setIsListening(false);
     setCurrentEmotion('neutral');
     setMessages([]);
     setIsSidebarOpen(false);
@@ -483,6 +507,20 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                       className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-500/30 transition-all placeholder-slate-500 shadow-inner hover:border-slate-500"
                     />
                   </div>
+                  {isMicSupported() && (
+                    <button
+                      onClick={toggleMic}
+                      disabled={isTyping}
+                      title={isListening ? 'Stop listening' : 'Speak your message'}
+                      className={`px-3.5 py-3 rounded-xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isListening
+                          ? 'bg-red-500/90 hover:bg-red-500 text-white animate-pulse'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600'
+                      }`}
+                    >
+                      {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                    </button>
+                  )}
                   <button
                     onClick={handleSend}
                     disabled={!inputText.trim() || isTyping}
