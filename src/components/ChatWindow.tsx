@@ -3,11 +3,12 @@ import SettingsModal from './SettingsModal';
 import CharacterSelect from './CharacterSelect';
 import CharacterPortrait from './CharacterPortrait';
 import Sidebar from './Sidebar';
-import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock } from 'lucide-react';
+import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX } from 'lucide-react';
 import { APIClient, detectAPIProvider } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
 import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
+import { speakQueue, stopSpeaking, splitIntoSentences, isVoiceSupported } from '../lib/voiceEngine';
 
 // Define what a single message looks like
 interface Message {
@@ -67,6 +68,18 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   // Persists for the lifetime of this chat session (cleared on handleNewChat).
   // Prevents re-fetching the same character if the user switches away and back.
   const genericCharacterCache = useRef<Map<string, import('../lib/characterFetch').CharacterInfo | null>>(new Map());
+
+  // Voice Mode: when on, AI responses are read aloud via voiceEngine.
+  // Persisted across sessions since it's a user preference, not per-chat state.
+  const [voiceModeOn, setVoiceModeOn] = useState(() => localStorage.getItem('voice_mode_on') === 'true');
+  const toggleVoiceMode = () => {
+    setVoiceModeOn(prev => {
+      const next = !prev;
+      localStorage.setItem('voice_mode_on', String(next));
+      if (!next) stopSpeaking(); // turning off mid-speech should cut it immediately
+      return next;
+    });
+  };
 
   // Current portrait emotion (Personality Mode only) - reflects the AI's most recent message
   const [currentEmotion, setCurrentEmotion] = useState<Emotion>('neutral');
@@ -164,6 +177,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     setActiveMode(null);
     setGenericCharacter(null);
     genericCharacterCache.current.clear();
+    stopSpeaking();
     setCurrentEmotion('neutral');
     setMessages([]);
     setIsSidebarOpen(false);
@@ -246,6 +260,16 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       setCurrentEmotion(emotion);
     }
     setIsTyping(false);
+
+    // Voice Mode: speak the response aloud. Personality Mode characters
+    // may have their own voiceSettings saved; Generic Mode always uses
+    // the browser default voice since fetched characters aren't stored.
+    if (voiceModeOn && isVoiceSupported() && cleanedText.trim()) {
+      const savedChar = activeMode?.kind === 'personality' && activeMode.characterId
+        ? getCharacter(activeMode.characterId)
+        : undefined;
+      speakQueue(splitIntoSentences(cleanedText), savedChar?.voiceSettings);
+    }
   };
 
   // Allow sending with the Enter key (respecting the same guards as the button)
@@ -295,7 +319,17 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
             <Menu size={24} />
           </button>
           <ModeTitle mode={activeMode} genericCharacter={genericCharacter} className="flex-1" />
-          <div className="flex items-center gap-1 text-xs">
+          <div className="flex items-center gap-2 text-xs">
+            {isVoiceSupported() && activeMode && (
+              <button
+                onClick={toggleVoiceMode}
+                className={`p-1 rounded transition-colors ${voiceModeOn ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'}`}
+                aria-label={voiceModeOn ? 'Turn voice off' : 'Turn voice on'}
+                title={voiceModeOn ? 'Voice Mode: on' : 'Voice Mode: off'}
+              >
+                {voiceModeOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              </button>
+            )}
             {apiStatus === 'success' && <CheckCircle size={16} className="text-green-400" />}
             {apiStatus === 'error' && <AlertCircle size={16} className="text-red-400" />}
             {apiStatus === 'loading' && <Zap size={16} className="text-yellow-400 animate-pulse" />}
@@ -306,7 +340,17 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
         {activeMode && (
           <div className="hidden md:flex items-center px-6 py-3.5 bg-slate-800/60 border-b border-slate-700/80 backdrop-blur-sm">
             <ModeTitle mode={activeMode} genericCharacter={genericCharacter} className="flex-1" />
-            <div className="flex items-center gap-2 text-xs text-slate-400">
+            <div className="flex items-center gap-3 text-xs text-slate-400">
+              {isVoiceSupported() && (
+                <button
+                  onClick={toggleVoiceMode}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors ${voiceModeOn ? 'text-amber-400 bg-amber-500/10' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/50'}`}
+                  aria-label={voiceModeOn ? 'Turn voice off' : 'Turn voice on'}
+                >
+                  {voiceModeOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                  <span>Voice</span>
+                </button>
+              )}
               {apiStatus === 'success' && <CheckCircle size={14} className="text-green-400" />}
               {apiStatus === 'error' && <AlertCircle size={14} className="text-red-400" />}
               {apiStatus === 'loading' && <Zap size={14} className="text-yellow-400 animate-pulse" />}
