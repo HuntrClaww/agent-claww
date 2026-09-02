@@ -87,6 +87,52 @@ export function isVoiceSupported(): boolean {
 }
 
 /**
+ * Resolves the best available SpeechSynthesisVoice for the given
+ * settings. Voice names are NOT portable across platforms (confirmed:
+ * mostly stable across browsers, but Android/iOS/iPadOS/macOS diverge -
+ * see HANDOVER.md Phase 6 research). So this tries, in order:
+ *   1. Exact name match (works when on the same browser/device the
+ *      voice was saved on, or on platforms where names do line up)
+ *   2. Same language match (e.g. saved as "en-GB" - find any installed
+ *      voice with that exact lang tag)
+ *   3. Same language family (e.g. saved "en-GB" but only "en-US" is
+ *      installed - better than a totally unrelated language)
+ *   4. undefined - caller falls through to the browser's own default
+ *      voice for the utterance, which is still coherent, just not the
+ *      specific voice that was chosen originally
+ *
+ * Logs which tier it landed on so voice mismatches are diagnosable
+ * rather than silent.
+ */
+export function pickBestVoice(settings?: VoiceSettings): SpeechSynthesisVoice | undefined {
+  if (!settings?.voiceName && !settings?.lang) return undefined;
+
+  if (settings.voiceName) {
+    const exact = cachedVoices.find(v => v.name === settings.voiceName);
+    if (exact) return exact;
+  }
+
+  if (settings.lang) {
+    const sameLang = cachedVoices.find(v => v.lang === settings.lang);
+    if (sameLang) {
+      console.warn(`[voiceEngine] Voice "${settings.voiceName}" not found — matched by exact language "${settings.lang}" instead: "${sameLang.name}"`);
+      return sameLang;
+    }
+
+    const family = settings.lang.split('-')[0];
+    const sameFamily = cachedVoices.find(v => v.lang.split('-')[0] === family);
+    if (sameFamily) {
+      console.warn(`[voiceEngine] Voice "${settings.voiceName}" not found — matched by language family "${family}" instead: "${sameFamily.name}" (${sameFamily.lang})`);
+      return sameFamily;
+    }
+  }
+
+  console.warn(`[voiceEngine] Voice "${settings.voiceName}" not available on this device and no language match found — using browser default`);
+  return undefined;
+}
+
+
+/**
  * Speaks a single piece of text using the given voice settings.
  * Cancels any currently-playing utterance first, so calls don't
  * queue up and overlap - the caller (ChatWindow) owns sequencing
@@ -101,14 +147,8 @@ export function speak(text: string, settings?: VoiceSettings): void {
   utterance.pitch = settings?.pitch ?? 1;
   utterance.rate = settings?.rate ?? 1;
 
-  if (settings?.voiceName) {
-    const match = cachedVoices.find(v => v.name === settings.voiceName);
-    if (match) {
-      utterance.voice = match;
-    } else {
-      console.warn(`[voiceEngine] Voice "${settings.voiceName}" not available on this device — using browser default`);
-    }
-  }
+  const resolvedVoice = pickBestVoice(settings);
+  if (resolvedVoice) utterance.voice = resolvedVoice;
 
   window.speechSynthesis.speak(utterance);
 }
@@ -129,10 +169,8 @@ export async function speakQueue(chunks: string[], settings?: VoiceSettings): Pr
       utterance.pitch = settings?.pitch ?? 1;
       utterance.rate = settings?.rate ?? 1;
 
-      if (settings?.voiceName) {
-        const match = cachedVoices.find(v => v.name === settings.voiceName);
-        if (match) utterance.voice = match;
-      }
+      const resolvedVoice = pickBestVoice(settings);
+      if (resolvedVoice) utterance.voice = resolvedVoice;
 
       utterance.onend = () => resolve();
       utterance.onerror = () => resolve(); // don't hang the queue on a playback error
@@ -259,10 +297,8 @@ export async function speakExpressive(
       utterance.rate = effectiveRate;
       utterance.volume = effectiveVolume;
 
-      if (settings?.voiceName) {
-        const match = cachedVoices.find(v => v.name === settings.voiceName);
-        if (match) utterance.voice = match;
-      }
+      const resolvedVoice = pickBestVoice(settings);
+      if (resolvedVoice) utterance.voice = resolvedVoice;
 
       utterance.onend = () => resolve();
       utterance.onerror = () => resolve();
