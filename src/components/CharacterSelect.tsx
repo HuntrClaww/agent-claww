@@ -27,6 +27,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [showEmotionSlots, setShowEmotionSlots] = useState(false);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voiceName, setVoiceName] = useState<string>('');
+  const [voiceLang, setVoiceLang] = useState<string>('');
   const [voicePitch, setVoicePitch] = useState(1);
   const [voiceRate, setVoiceRate] = useState(1);
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
@@ -123,7 +124,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
 
     const hasVoiceSettings = voiceName !== '' || voicePitch !== 1 || voiceRate !== 1;
     const voiceSettings: VoiceSettings | undefined = hasVoiceSettings
-      ? { voiceName: voiceName || undefined, pitch: voicePitch, rate: voiceRate }
+      ? { voiceName: voiceName || undefined, lang: voiceLang || undefined, pitch: voicePitch, rate: voiceRate }
       : undefined;
 
     const character = createCharacter({
@@ -388,7 +389,12 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                       <span className="text-xs font-medium text-slate-500 mb-1.5 block">System voice</span>
                       <select
                         value={voiceName}
-                        onChange={(e) => setVoiceName(e.target.value)}
+                        onChange={(e) => {
+                          const name = e.target.value;
+                          setVoiceName(name);
+                          const match = availableVoices.find(v => v.name === name);
+                          setVoiceLang(match?.lang || '');
+                        }}
                         className="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all"
                       >
                         <option value="">Browser default</option>
