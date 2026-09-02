@@ -153,7 +153,11 @@ README.md
 **Confirmed 3-part roadmap (user direction, 2026-09-02), in order:**
 1. ✅ Pitch/rate analysis-assist tool — DONE (above)
 2. ✅ Prosody/pacing improvements — DONE. `EMOTION_PROSODY` table in voiceEngine.ts nudges pitch/rate/volume per detected emotion (angry=faster+clipped, sad/thinking=slower+longer pauses+quieter, happy=brighter+quicker, etc.) on top of the character's base voice. `buildProsodyPlan()` splits text into clause-level chunks at punctuation with pause durations sized to punctuation type and scaled by emotion. `speakExpressive()` is now what ChatWindow calls instead of plain `speakQueue`. Honestly documented as punctuation/emotion-driven heuristics, not neural prosody modeling like server-side voice-mode products.
-3. ⏳ Voice package portability — make voice settings survive across browsers/devices/OSes, ideally compatible with standard device-level custom TTS voice systems. NEXT, not yet started.
+3. ✅ Voice package portability — DONE. Two-pronged fix, both honestly scoped after research confirmed the Web Speech API has no universal cross-platform voice ID and browsers cannot install new voices on a device (only read whatever the OS already has):
+   - **Graceful fallback matching** (`pickBestVoice()` in voiceEngine.ts): exact voiceName → same `lang` → same language family → browser default, each tier logged. `VoiceSettings` gained an optional `lang` field, captured automatically when a voice is picked in Voice Studio.
+   - **Export/import as portable settings** (`exportVoicePackage`/`downloadVoicePackage`/`parseVoicePackage`): a character's voice settings can be downloaded as a `.json` file and re-imported — reuses a tuned voice across characters (fits the app's immutable-character/fork model) or across devices. Explicitly documented in code and UI copy that this carries *settings*, not an installable voice.
+
+**All 3 parts of the user-directed extension plan are now complete.**
 | Azure F0 | 500k chars/mo free | Azure account + billing setup (friction) | No | Deprioritized — setup friction |
 | Google Cloud TTS | 4M chars/mo standard | **Requires credit card to activate** | No | Ruled out — violates hard constraint |
 
@@ -275,6 +279,11 @@ README.md
 | 34 | **Phase 6 (8/N):** Voice analysis UI wiring | CharacterSelect.tsx | "Upload sample" section in Voice Studio: shows estimated pitch/pace/confidence, "Apply suggested" button sets sliders. Clear non-cloning disclaimer in UI copy. |
 | 35 | **Phase 6 (9/N):** Emotion-aware prosody engine | voiceEngine.ts | `EMOTION_PROSODY` table + `buildProsodyPlan()` (clause splitting at punctuation, pause sizing) + `speakExpressive()` (pitch/rate/volume nudges per emotion on top of character base voice). Punctuation/emotion-driven heuristics, not neural prosody. |
 | 36 | **Phase 6 (10/N):** speakExpressive wired into ChatWindow | ChatWindow.tsx | Replaced `speakQueue(splitIntoSentences(...))` with `speakExpressive(cleanedText, voiceSettings, emotion)` — the already-detected emotion now drives voice delivery, not just the portrait panel. |
+| 37 | **Phase 6 (11/N):** VoiceSettings.lang field | characterStore.ts | Added optional `lang` (BCP-47) alongside voiceName, for cross-device fallback matching. |
+| 38 | **Phase 6 (12/N):** pickBestVoice() fallback matching | voiceEngine.ts | Centralized voice lookup (was duplicated 3x) into one function: exact name → same lang → same language family → browser default. Each tier logged. |
+| 39 | **Phase 6 (13/N):** Voice lang captured in Voice Studio | CharacterSelect.tsx | Dropdown onChange now also stores the selected voice's `.lang`, feeding pickBestVoice()'s fallback tiers. |
+| 40 | **Phase 6 (14/N):** Voice package export/import engine | voiceEngine.ts | `exportVoicePackage()`, `downloadVoicePackage()`, `parseVoicePackage()`. Honestly scoped as portable settings, not an installable voice (browsers can't install OS-level TTS voices — confirmed via research). |
+| 41 | **Phase 6 (15/N):** Voice package UI wiring | CharacterSelect.tsx | Export/Import buttons in Voice Studio. Reuses a tuned voice across characters, fits the app's immutable-character/fork design. Completes the 3-part extension plan. |
 
 ---
 
@@ -347,6 +356,14 @@ calling Phase 6 fully closed.
 
    - [x] Voice analysis-assist tool (voiceAnalysis.ts + Voice Studio UI)
    - [x] Prosody/pacing improvements — emotion-aware pitch/rate/pause via speakExpressive()
-   - [ ] Voice package portability — cross-device/browser compatible voice settings, ideally interoperable with device-level custom TTS systems — NEXT
+   - [x] Voice package portability — pickBestVoice() fallback matching + export/import
    - [ ] Avatar tool (Phase 8) remains explicitly deferred until Phase 6 is complete
+
+**Phase 6 (core + all 3 extensions) is now fully built.** Remaining
+before calling it done: real-device/cross-browser testing — mobile
+Safari mic support unverified, and iOS Safari requires speak() to be
+called from within a user gesture (confirmed via research) which may
+affect the Voice Mode auto-read-on-arrival flow specifically on iOS;
+this should be checked on an actual iPhone before considering Phase 6
+closed.
 
