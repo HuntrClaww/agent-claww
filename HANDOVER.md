@@ -155,7 +155,7 @@ README.md
 **Build plan (revised, free-first):**
 - [x] Voice engine: Web Speech API (`SpeechSynthesis`) — playback engine built (voiceEngine.ts)
 - [x] Per-character voice settings stored on `SavedCharacter`: selected system voice name, pitch, rate
-- [ ] Voice Studio section in character creation: pick from available system voices, live preview button
+- [x] Voice Studio section in character creation: pick from available system voices, live preview button
 - [ ] "Voice Mode" / "Call" toggle in chat toolbar → reads AI responses aloud automatically
 - [x] Sentence-boundary chunking helper built (`splitIntoSentences()` in voiceEngine.ts) — not yet wired into ChatWindow send flow
 - [ ] Mic input (optional, later): `SpeechRecognition` API — also browser-native, $0
@@ -262,6 +262,7 @@ README.md
 | 26 | **REVIEW:** UserProfileModal rewrite | UserProfileModal.tsx | Full design-system alignment (teal→amber), avatar URL→file upload with compression, X close, Enter-to-save, hover overlay. |
 | 27 | **Phase 6 (1/N):** VoiceSettings data model | characterStore.ts | Added `VoiceSettings` type (voiceName/pitch/rate) + `isValidVoiceSettings()` guard on `SavedCharacter`. Foundation only, no UI yet. |
 | 28 | **Phase 6 (2/N):** voiceEngine.ts playback wrapper | voiceEngine.ts | Web Speech API wrapper: `getAvailableVoices()`, `speak()`, `speakQueue()`, `stopSpeaking()`, `isSpeaking()`, `splitIntoSentences()`. Zero cost, no signup. Not yet wired into UI. |
+| 29 | **Phase 6 (3/N):** Voice Studio picker UI | CharacterSelect.tsx | Optional "Set a voice" section in character creation: system voice dropdown, pitch/rate sliders, live preview button. `voiceSettings` wired into `createCharacter()`, only stored if user changed a default. |
 
 ---
 
@@ -322,7 +323,7 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 1. **Phase 6 — Voice & Audio System** (see Section 6 above for full spec + research table)
    - [x] VoiceSettings data model added to characterStore.ts
    - [x] Web Speech API playback engine built (voiceEngine.ts)
-   - [ ] Voice Studio UI in character creation (voice picker + live preview)
+   - [x] Voice Studio UI in character creation (voice picker + live preview)
    - [ ] Voice Mode toggle in chat toolbar — wires speakQueue() into ChatWindow's AI response flow
    - [ ] Mic input (SpeechRecognition) — lower priority, after playback works
    - [ ] Avatar tool (Phase 8) remains explicitly deferred until Phase 6 is complete
