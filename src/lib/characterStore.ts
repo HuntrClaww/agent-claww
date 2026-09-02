@@ -19,6 +19,17 @@ import type { Emotion } from './emotionDetect';
 
 export type BehaviorMode = 'true-to-character' | 'off-script';
 
+// Voice settings for Phase 6 (Web Speech API) - stores which browser
+// system voice to use plus pitch/rate tuning. voiceName is matched
+// against SpeechSynthesisVoice.name at playback time; if that exact
+// voice isn't available on the current device, playback falls back to
+// the browser's default voice rather than failing.
+export interface VoiceSettings {
+  voiceName?: string; // SpeechSynthesisVoice.name, e.g. "Google UK English Male"
+  pitch: number;       // 0 - 2, default 1
+  rate: number;         // 0.1 - 10, default 1
+}
+
 export interface SavedCharacter {
   id: string;
   name: string;
@@ -32,6 +43,7 @@ export interface SavedCharacter {
   portraitUrl?: string;   // data URL for the character's default/neutral portrait
   emotionPortraits?: Partial<Record<Emotion, string>>; // optional per-emotion art, sparse - unset emotions fall back to portraitUrl
   themeColor?: string;    // hex accent color (e.g. "#f472b6") applied when this character's chat is active
+  voiceSettings?: VoiceSettings; // Phase 6: optional per-character voice, falls back to browser default if unset
   createdAt: number;
 }
 
@@ -88,6 +100,9 @@ export function createCharacter(input: Omit<SavedCharacter, 'id' | 'createdAt' |
   if (input.themeColor && !isValidHexColor(input.themeColor)) {
     throw new Error('Theme color must be a valid hex color (e.g. #f472b6).');
   }
+  if (input.voiceSettings && !isValidVoiceSettings(input.voiceSettings)) {
+    throw new Error('Voice pitch must be 0-2 and rate must be 0.1-10.');
+  }
   if (input.emotionPortraits) {
     for (const [emotion, dataUrl] of Object.entries(input.emotionPortraits)) {
       if (dataUrl && !isEmotionPortraitSizeOk(dataUrl)) {
@@ -115,6 +130,15 @@ export function createCharacter(input: Omit<SavedCharacter, 'id' | 'createdAt' |
  */
 export function isValidHexColor(value: string): boolean {
   return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value);
+}
+
+/**
+ * Guards voiceSettings against out-of-range values before they reach
+ * SpeechSynthesisUtterance, which silently clamps rather than erroring -
+ * we'd rather catch a bad value here than have it default-clamp silently.
+ */
+export function isValidVoiceSettings(v: VoiceSettings): boolean {
+  return v.pitch >= 0 && v.pitch <= 2 && v.rate >= 0.1 && v.rate <= 10;
 }
 
 /**
