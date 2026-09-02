@@ -152,8 +152,8 @@ README.md
 
 **Confirmed 3-part roadmap (user direction, 2026-09-02), in order:**
 1. ✅ Pitch/rate analysis-assist tool — DONE (above)
-2. ⏳ Prosody/pacing improvements — punctuation-aware pauses, natural pacing tied to emotional expression (anger, calm happiness, etc.) using the existing emotion-detection system. IN PROGRESS NEXT.
-3. ⏳ Voice package portability — make voice settings survive across browsers/devices/OSes, ideally compatible with standard device-level custom TTS voice systems. LAST, not yet started.
+2. ✅ Prosody/pacing improvements — DONE. `EMOTION_PROSODY` table in voiceEngine.ts nudges pitch/rate/volume per detected emotion (angry=faster+clipped, sad/thinking=slower+longer pauses+quieter, happy=brighter+quicker, etc.) on top of the character's base voice. `buildProsodyPlan()` splits text into clause-level chunks at punctuation with pause durations sized to punctuation type and scaled by emotion. `speakExpressive()` is now what ChatWindow calls instead of plain `speakQueue`. Honestly documented as punctuation/emotion-driven heuristics, not neural prosody modeling like server-side voice-mode products.
+3. ⏳ Voice package portability — make voice settings survive across browsers/devices/OSes, ideally compatible with standard device-level custom TTS voice systems. NEXT, not yet started.
 | Azure F0 | 500k chars/mo free | Azure account + billing setup (friction) | No | Deprioritized — setup friction |
 | Google Cloud TTS | 4M chars/mo standard | **Requires credit card to activate** | No | Ruled out — violates hard constraint |
 
@@ -273,6 +273,8 @@ README.md
 | 32 | **Phase 6 (6/N):** Mic button wired into chat | ChatWindow.tsx | Mic button next to Send, gated by `isMicSupported()`. Live interim transcripts, auto-stop on final result, `stopListening()` on new chat. Phase 6 core loop complete both directions (speak-to-send + Voice Mode read-back). |
 | 33 | **Phase 6 (7/N):** Voice analysis-assist engine | voiceAnalysis.ts | Autocorrelation pitch detection (median across windows) + amplitude-envelope syllable rate estimation. Maps both to pitch/rate slider ranges. Explicitly NOT cloning — confidence capped at 'medium'. |
 | 34 | **Phase 6 (8/N):** Voice analysis UI wiring | CharacterSelect.tsx | "Upload sample" section in Voice Studio: shows estimated pitch/pace/confidence, "Apply suggested" button sets sliders. Clear non-cloning disclaimer in UI copy. |
+| 35 | **Phase 6 (9/N):** Emotion-aware prosody engine | voiceEngine.ts | `EMOTION_PROSODY` table + `buildProsodyPlan()` (clause splitting at punctuation, pause sizing) + `speakExpressive()` (pitch/rate/volume nudges per emotion on top of character base voice). Punctuation/emotion-driven heuristics, not neural prosody. |
+| 36 | **Phase 6 (10/N):** speakExpressive wired into ChatWindow | ChatWindow.tsx | Replaced `speakQueue(splitIntoSentences(...))` with `speakExpressive(cleanedText, voiceSettings, emotion)` — the already-detected emotion now drives voice delivery, not just the portrait panel. |
 
 ---
 
@@ -344,7 +346,7 @@ mobile Safari mic support) is still outstanding and should happen before
 calling Phase 6 fully closed.
 
    - [x] Voice analysis-assist tool (voiceAnalysis.ts + Voice Studio UI)
-   - [ ] Prosody/pacing improvements — punctuation-aware pauses, pacing tied to emotion (anger, calm happiness, etc.) — NEXT
-   - [ ] Voice package portability — cross-device/browser compatible voice settings, ideally interoperable with device-level custom TTS systems — LAST
+   - [x] Prosody/pacing improvements — emotion-aware pitch/rate/pause via speakExpressive()
+   - [ ] Voice package portability — cross-device/browser compatible voice settings, ideally interoperable with device-level custom TTS systems — NEXT
    - [ ] Avatar tool (Phase 8) remains explicitly deferred until Phase 6 is complete
 
