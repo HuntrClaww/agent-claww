@@ -456,6 +456,160 @@ export function stopListening(): void {
   }
 }
 
+// --- Mic input device awareness & signal quality preflight -----------
+//
+// IMPORTANT — what this is and isn't: the browser's SpeechRecognition
+// API manages its own internal audio stream and does not accept
+// MediaTrackConstraints or expose the raw signal to us. So this section
+// cannot change what SpeechRecognition itself "hears" — it can only:
+//   1. Take a short separate getUserMedia sample (with noise-reduction
+//      constraints enabled) to give the user feedback on mic quality
+//      BEFORE they start dictating, so a muffled/too-quiet mic is caught
+//      early rather than producing a garbled transcript silently.
+//   2. Enumerate and watch audio input devices, so a connected Bluetooth
+//      headset or other external mic can be recognized and surfaced.
+//
+// Honest limit: this cannot diagnose "damaged hardware" specifically.
+// It can only report symptoms (silent, very quiet, or muffled-sounding
+// signal) — callers should phrase feedback as "having trouble hearing
+// you clearly", never as a hardware diagnosis.
+
+export interface MicSignalQuality {
+  level: 'silent' | 'quiet' | 'ok';
+  muffled: boolean;
+  rms: number; // 0-1, rough loudness of the sampled window
+}
+
+/**
+ * Takes a short (~600ms) sample from the default/current mic with
+ * noise-reduction constraints enabled, and reports a rough read on
+ * loudness and whether the signal looks heavily muffled (energy
+ * concentrated in low frequencies, as with a covered or bass-heavy mic).
+ *
+ * Always releases the mic stream when done, even on error. Never
+ * throws — returns a best-effort result, since this is advisory
+ * feedback, not a hard gate on using the mic.
+ */
+export async function checkMicSignalQuality(sampleMs = 600): Promise<MicSignalQuality> {
+  const fallback: MicSignalQuality = { level: 'silent', muffled: false, rms: 0 };
+  if (!navigator.mediaDevices?.getUserMedia) return fallback;
+
+  let stream: MediaStream | null = null;
+  let ctx: AudioContext | null = null;
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    ctx = new AudioCtx();
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+
+    const timeDomain = new Float32Array(analyser.fftSize);
+    const freqData = new Uint8Array(analyser.frequencyBinCount);
+
+    // Sample repeatedly over the window rather than once, so a brief
+    // pause in speech doesn't read as silence.
+    let maxRms = 0;
+    let lowBandTotal = 0;
+    let highBandTotal = 0;
+    let samples = 0;
+    const stepMs = 50;
+    const steps = Math.max(1, Math.round(sampleMs / stepMs));
+
+    for (let i = 0; i < steps; i++) {
+      analyser.getFloatTimeDomainData(timeDomain);
+      analyser.getByteFrequencyData(freqData);
+
+      let sumSquares = 0;
+      for (let j = 0; j < timeDomain.length; j++) sumSquares += timeDomain[j] * timeDomain[j];
+      const rms = Math.sqrt(sumSquares / timeDomain.length);
+      maxRms = Math.max(maxRms, rms);
+
+      // Rough low vs high band split of the frequency bins (not a true
+      // spectral centroid, just enough to flag "heavily bass-skewed").
+      const mid = Math.floor(freqData.length / 4);
+      let low = 0, high = 0;
+      for (let j = 0; j < freqData.length; j++) {
+        if (j < mid) low += freqData[j]; else high += freqData[j];
+      }
+      lowBandTotal += low;
+      highBandTotal += high;
+      samples++;
+
+      await new Promise(resolve => setTimeout(resolve, stepMs));
+    }
+
+    const avgLow = samples ? lowBandTotal / samples : 0;
+    const avgHigh = samples ? highBandTotal / samples : 0;
+    // Muffled = energy heavily concentrated in the low band relative to
+    // high, and there's enough signal present to judge at all.
+    const muffled = maxRms > 0.01 && avgHigh > 0 && avgLow / (avgHigh + 1) > 3;
+
+    const level: MicSignalQuality['level'] =
+      maxRms < 0.01 ? 'silent' : maxRms < 0.03 ? 'quiet' : 'ok';
+
+    return { level, muffled, rms: Math.round(maxRms * 1000) / 1000 };
+  } catch (err) {
+    console.warn('[voiceEngine] Mic signal quality check failed (non-fatal):', err);
+    return fallback;
+  } finally {
+    stream?.getTracks().forEach(track => track.stop());
+    ctx?.close().catch(() => {});
+  }
+}
+
+/**
+ * Lists currently available audio input devices. Labels are only
+ * populated if mic permission has already been granted (a browser
+ * privacy restriction) — before that, devices appear with empty labels.
+ */
+export async function listAudioInputDevices(): Promise<MediaDeviceInfo[]> {
+  if (!navigator.mediaDevices?.enumerateDevices) return [];
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter(d => d.kind === 'audioinput');
+  } catch (err) {
+    console.warn('[voiceEngine] Could not enumerate audio input devices:', err);
+    return [];
+  }
+}
+
+/**
+ * Best-effort heuristic for whether a device label looks like an
+ * external/wireless mic (Bluetooth headset, earbuds, etc.) rather than
+ * a built-in laptop/phone mic. Device labels aren't standardized, so
+ * this is a keyword match, not a reliable device-type API — treat it
+ * as a hint for UI copy ("using your Bluetooth mic?"), not a hard fact.
+ */
+export function isLikelyExternalAudioDevice(label: string): boolean {
+  const lower = label.toLowerCase();
+  return /bluetooth|airpods|buds|headset|wireless|earphone/.test(lower);
+}
+
+/**
+ * Subscribes to audio input device changes (plugged/unplugged). Returns
+ * an unsubscribe function. Fires the callback with the refreshed device
+ * list each time; does not fire immediately on subscribe.
+ */
+export function watchAudioInputDevices(onChange: (devices: MediaDeviceInfo[]) => void): () => void {
+  if (!navigator.mediaDevices?.addEventListener) return () => {};
+
+  const handler = () => {
+    listAudioInputDevices().then(onChange);
+  };
+  navigator.mediaDevices.addEventListener('devicechange', handler);
+  return () => navigator.mediaDevices.removeEventListener('devicechange', handler);
+}
+
 // --- Voice package export/import (portability) ------------------------
 //
 // IMPORTANT — what this is and isn't: a browser cannot install a new
