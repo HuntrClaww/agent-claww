@@ -181,9 +181,9 @@ Two-part scope, both requested together, built one focused piece at a time:
    - [ ] Optional: on-demand micro-lookup for a flagged name/term (reuse characterFetch.ts's on-demand fetch pattern)
 
 2. **Mic input robustness** — currently Phase 6 only touches `SpeechRecognition`, never raw `getUserMedia`/Web Audio, so there's no noise handling, quality feedback, or device awareness at all.
-   - [ ] Enable standard `MediaTrackConstraints`: `echoCancellation`, `noiseSuppression`, `autoGainControl`
-   - [ ] Pre-flight signal quality check (RMS level + rough spectrum) before a listening session starts, surfaced as a user-facing warning (e.g. "mic sounds muffled") rather than a silent failure
-   - [ ] Input device enumeration (`enumerateDevices()` + `ondevicechange`) — detect/label Bluetooth or external mics, suggest switching input
+   - [x] Engine layer built (voiceEngine.ts, 2026-09-03): `checkMicSignalQuality()` (short getUserMedia sample with `echoCancellation`/`noiseSuppression`/`autoGainControl` enabled, reports silent/quiet/ok + muffled flag), `listAudioInputDevices()` + `watchAudioInputDevices()` (device enumeration + devicechange watcher), `isLikelyExternalAudioDevice()` (Bluetooth/headset label heuristic). NOT yet wired into any UI — next step.
+   - [ ] Wire into ChatWindow mic toggle: run quality check before/on first listen, surface warning UI on 'quiet'/'muffled' results
+   - [ ] Wire device list/watcher into UI — surface "using your Bluetooth mic?" hint when an external device is detected
    - [ ] Honest limit: cannot reliably diagnose "damaged hardware" specifically from client-side signal analysis. Symptom-based fallback only — persistent near-silent/garbled input across attempts triggers a generic "having trouble hearing you" prompt, never a hardware diagnosis claim.
 
 ### Phase 7 — Professional Coaching Modules ⏳ PENDING (future, third pillar)
