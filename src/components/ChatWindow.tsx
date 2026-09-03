@@ -315,16 +315,34 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
   // Minimal renderer so **bold** in AI replies is displayed as actual bold text
   const renderContent = (content: string) => {
+    // Order matters: bold (**x**) is matched first so its asterisks are
+    // consumed before the single-asterisk action-text pass ever sees them.
     const parts = content.split(/(\*\*[^*]+\*\*)/g);
-    return parts.map((part, i) =>
-      part.length > 4 && part.startsWith('**') && part.endsWith('**') ? (
-        <strong key={i} className="font-semibold text-teal-300">
-          {part.slice(2, -2)}
-        </strong>
-      ) : (
-        <span key={i}>{part}</span>
-      )
-    );
+    return parts.map((part, i) => {
+      if (part.length > 4 && part.startsWith('**') && part.endsWith('**')) {
+        return (
+          <strong key={i} className="font-semibold text-teal-300">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      // Non-verbal action text: *smirks*, *sighs*, etc. Single asterisks
+      // only - already-consumed ** pairs above won't reach here as pairs.
+      const actionParts = part.split(/(\*[^*]+\*)/g);
+      return (
+        <span key={i}>
+          {actionParts.map((ap, j) =>
+            ap.length > 2 && ap.startsWith('*') && ap.endsWith('*') ? (
+              <em key={j} className="text-slate-400 italic">
+                {ap.slice(1, -1)}
+              </em>
+            ) : (
+              <span key={j}>{ap}</span>
+            )
+          )}
+        </span>
+      );
+    });
   };
 
   // The active character's theme color, if one was set at creation time
