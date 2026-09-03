@@ -171,6 +171,21 @@ README.md
 - [ ] **Deferred, needs real API key from user:** ElevenLabs integration for true voice cloning — user provides their own free-tier ElevenLabs key in Settings (same pattern as the existing AI provider keys), never a payment method
 - [ ] Voice orb visualizer: CSS scale or canvas tied to `AnalyserNode` frequency data — client-side only, no cost implication
 
+### Phase 6.5 — Speech Recognition Robustness ⏳ PENDING (added 2026-09-03, user-directed)
+Two-part scope, both requested together, built one focused piece at a time:
+
+1. **Mixed-language / code-switched word flagging** — browser `SpeechRecognition` takes a single `lang` and cannot natively transcribe code-switched speech (e.g. English sentence with a Spanish name or phrase dropped in). Honest scope boundary: this is NOT true multi-language transcription (Chrome's API doesn't expose that). What's buildable: post-hoc scan of the final transcript for low-frequency/unmatched tokens against a common-word list for the active language, flag them inline (not silently auto-corrected), user confirms/edits. Applies to both voice-transcribed and typed text.
+   - [ ] Common-word frequency list/dictionary for flagging (start with English, extensible)
+   - [ ] Token-flagging pass on final transcript + typed input
+   - [ ] Inline flag UI (non-intrusive, user-editable, not auto-substituted)
+   - [ ] Optional: on-demand micro-lookup for a flagged name/term (reuse characterFetch.ts's on-demand fetch pattern)
+
+2. **Mic input robustness** — currently Phase 6 only touches `SpeechRecognition`, never raw `getUserMedia`/Web Audio, so there's no noise handling, quality feedback, or device awareness at all.
+   - [ ] Enable standard `MediaTrackConstraints`: `echoCancellation`, `noiseSuppression`, `autoGainControl`
+   - [ ] Pre-flight signal quality check (RMS level + rough spectrum) before a listening session starts, surfaced as a user-facing warning (e.g. "mic sounds muffled") rather than a silent failure
+   - [ ] Input device enumeration (`enumerateDevices()` + `ondevicechange`) — detect/label Bluetooth or external mics, suggest switching input
+   - [ ] Honest limit: cannot reliably diagnose "damaged hardware" specifically from client-side signal analysis. Symptom-based fallback only — persistent near-silent/garbled input across attempts triggers a generic "having trouble hearing you" prompt, never a hardware diagnosis claim.
+
 ### Phase 7 — Professional Coaching Modules ⏳ PENDING (future, third pillar)
 - [ ] This is a THIRD PILLAR beyond the two-mode system — do not fold into Generic/Personality
 - [ ] Speech & Diction Coach: filler word tracker, pacing analysis, tone evaluator
