@@ -8,7 +8,7 @@ import { APIClient, detectAPIProvider } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
 import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
-import { speakExpressive, stopSpeaking, isVoiceSupported, isMicSupported, startListening, stopListening, primeSpeechIfNeeded } from '../lib/voiceEngine';
+import { speakExpressive, stopSpeaking, isVoiceSupported, isMicSupported, startListening, stopListening, primeSpeechIfNeeded, checkMicSignalQuality, listAudioInputDevices, watchAudioInputDevices, isLikelyExternalAudioDevice } from '../lib/voiceEngine';
 
 // Define what a single message looks like
 interface Message {
@@ -85,6 +85,30 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   // Mic input: push-to-toggle. Interim results update the input live;
   // final results replace it and stop listening.
   const [isListening, setIsListening] = useState(false);
+
+  // Phase 6.5: advisory mic quality feedback + external device hint.
+  // Neither ever blocks mic use - both are best-effort UI hints only.
+  const [micWarning, setMicWarning] = useState<string | null>(null);
+  const [externalMicHint, setExternalMicHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isMicSupported()) return;
+
+    // Check current devices once on mount (labels may be empty until
+    // permission is granted - that's fine, this just upgrades quietly
+    // once it's known).
+    listAudioInputDevices().then(devices => {
+      const external = devices.find(d => d.label && isLikelyExternalAudioDevice(d.label));
+      if (external) setExternalMicHint(external.label);
+    });
+
+    const unsubscribe = watchAudioInputDevices(devices => {
+      const external = devices.find(d => d.label && isLikelyExternalAudioDevice(d.label));
+      setExternalMicHint(external ? external.label : null);
+    });
+    return unsubscribe;
+  }, []);
+
   const toggleMic = () => {
     primeSpeechIfNeeded(); // covers the case where mic, not Send, is the first tap of the session
     if (isListening) {
@@ -92,6 +116,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       setIsListening(false);
       return;
     }
+    setMicWarning(null);
     setIsListening(true);
     startListening(
       (transcript, isFinal) => {
@@ -103,6 +128,21 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       },
       () => setIsListening(false)
     );
+
+    // Advisory quality check, runs in parallel - never delays or blocks
+    // the actual listening session, just surfaces a hint if the signal
+    // looks quiet or muffled once it resolves (~600ms later).
+    checkMicSignalQuality().then(result => {
+      if (result.level === 'silent') {
+        setMicWarning("Not hearing much from your mic — check it's not muted or covered.");
+      } else if (result.level === 'quiet') {
+        setMicWarning('Your mic sounds quiet — try moving closer or speaking up a bit.');
+      } else if (result.muffled) {
+        setMicWarning('Your mic sounds muffled — check nothing is covering it.');
+      } else {
+        setMicWarning(null);
+      }
+    });
   };
 
   // Current portrait emotion (Personality Mode only) - reflects the AI's most recent message
@@ -520,6 +560,11 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
             {/* Input Field */}
             <div className="p-4 border-t border-slate-800 bg-gradient-to-t from-slate-900 to-slate-800">
               <div className="max-w-3xl mx-auto flex flex-col gap-1.5">
+                {(micWarning || (isListening && externalMicHint)) && (
+                  <div className="text-xs text-amber-300/80 px-1">
+                    {micWarning ?? `Using ${externalMicHint}`}
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <div className="flex-1 relative">
                     <input
