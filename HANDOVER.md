@@ -180,10 +180,10 @@ Two-part scope, both requested together, built one focused piece at a time:
    - [ ] Inline flag UI (non-intrusive, user-editable, not auto-substituted)
    - [ ] Optional: on-demand micro-lookup for a flagged name/term (reuse characterFetch.ts's on-demand fetch pattern)
 
-2. **Mic input robustness** — currently Phase 6 only touches `SpeechRecognition`, never raw `getUserMedia`/Web Audio, so there's no noise handling, quality feedback, or device awareness at all.
+2. **Mic input robustness** ✅ COMPLETE 2026-09-03 — currently Phase 6 only touches `SpeechRecognition`, never raw `getUserMedia`/Web Audio, so there's no noise handling, quality feedback, or device awareness at all.
    - [x] Engine layer built (voiceEngine.ts, 2026-09-03): `checkMicSignalQuality()` (short getUserMedia sample with `echoCancellation`/`noiseSuppression`/`autoGainControl` enabled, reports silent/quiet/ok + muffled flag), `listAudioInputDevices()` + `watchAudioInputDevices()` (device enumeration + devicechange watcher), `isLikelyExternalAudioDevice()` (Bluetooth/headset label heuristic). NOT yet wired into any UI — next step.
-   - [ ] Wire into ChatWindow mic toggle: run quality check before/on first listen, surface warning UI on 'quiet'/'muffled' results
-   - [ ] Wire device list/watcher into UI — surface "using your Bluetooth mic?" hint when an external device is detected
+   - [x] Wired into ChatWindow mic toggle (2026-09-03): quality check runs in parallel with listening (never blocks it), surfaces an amber advisory line on quiet/silent/muffled results.
+   - [x] Device watcher wired into UI (2026-09-03): "Using <device label>" hint shown while listening if a likely Bluetooth/external mic is detected.
    - [ ] Honest limit: cannot reliably diagnose "damaged hardware" specifically from client-side signal analysis. Symptom-based fallback only — persistent near-silent/garbled input across attempts triggers a generic "having trouble hearing you" prompt, never a hardware diagnosis claim.
 
 ### Phase 7 — Professional Coaching Modules ⏳ PENDING (future, third pillar)
