@@ -86,6 +86,38 @@ export function isVoiceSupported(): boolean {
   return 'speechSynthesis' in window;
 }
 
+// iOS Safari requires speechSynthesis.speak() to run within the
+// synchronous portion of a user gesture handler (click/tap/keypress) -
+// confirmed via research. Voice Mode's actual speech happens after an
+// `await` on the AI network response, which breaks that synchronous
+// chain and can cause speak() to silently do nothing on iPhone/iPad.
+//
+// The standard workaround: fire one throwaway, near-silent utterance
+// synchronously on the FIRST user gesture of the session (e.g. inside
+// the Send button's click handler, before any await). This "unlocks"
+// speech synthesis for the rest of the session, so later async calls
+// to speak()/speakExpressive() go through normally.
+let speechPrimed = false;
+
+/**
+ * Call this as the very first line of a click/tap handler (before any
+ * `await`) to unlock speech synthesis on iOS Safari for the rest of
+ * the session. Safe to call on every click - it's a no-op after the
+ * first successful call, and a no-op entirely on browsers that don't
+ * need this workaround (most non-iOS browsers behave fine without it).
+ */
+export function primeSpeechIfNeeded(): void {
+  if (speechPrimed || !isVoiceSupported()) return;
+  speechPrimed = true;
+  try {
+    const utterance = new SpeechSynthesisUtterance(' ');
+    utterance.volume = 0;
+    window.speechSynthesis.speak(utterance);
+  } catch (err) {
+    console.warn('[voiceEngine] Speech priming failed (non-fatal):', err);
+  }
+}
+
 /**
  * Resolves the best available SpeechSynthesisVoice for the given
  * settings. Voice names are NOT portable across platforms (confirmed:

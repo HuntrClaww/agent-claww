@@ -8,7 +8,7 @@ import { APIClient, detectAPIProvider } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
 import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
-import { speakExpressive, stopSpeaking, isVoiceSupported, isMicSupported, startListening, stopListening } from '../lib/voiceEngine';
+import { speakExpressive, stopSpeaking, isVoiceSupported, isMicSupported, startListening, stopListening, primeSpeechIfNeeded } from '../lib/voiceEngine';
 
 // Define what a single message looks like
 interface Message {
@@ -73,6 +73,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   // Persisted across sessions since it's a user preference, not per-chat state.
   const [voiceModeOn, setVoiceModeOn] = useState(() => localStorage.getItem('voice_mode_on') === 'true');
   const toggleVoiceMode = () => {
+    primeSpeechIfNeeded();
     setVoiceModeOn(prev => {
       const next = !prev;
       localStorage.setItem('voice_mode_on', String(next));
@@ -85,6 +86,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   // final results replace it and stop listening.
   const [isListening, setIsListening] = useState(false);
   const toggleMic = () => {
+    primeSpeechIfNeeded(); // covers the case where mic, not Send, is the first tap of the session
     if (isListening) {
       stopListening();
       setIsListening(false);
@@ -212,6 +214,12 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   // Handle sending a message
   const handleSend = async () => {
     if (!inputText.trim() || isTyping) return;
+
+    // Unlock speech synthesis on iOS Safari while we're still in the
+    // synchronous portion of this click handler — must happen before
+    // any `await` below, or Voice Mode's speak() call later in this
+    // function can silently fail on iPhone/iPad.
+    primeSpeechIfNeeded();
 
     // 1. Add user message to the screen instantly
     const newUserMsg: Message = { id: Date.now().toString(), role: 'user', content: inputText };
