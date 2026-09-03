@@ -334,7 +334,7 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 - **Friendship/Trust/Affinity system:** Invisible stat that alters how a character responds over time — not XP gating, just adds realism to long-term sessions.
 - **Secret-revealing mechanic:** Characters can have hidden information flags that only surface after enough trust is built in Off-Script/Open-World mode.
 - **Spontaneous character initiative:** Characters can occasionally ask the user a question first rather than always being passive responders.
-- **Non-verbal action formatting:** Physical actions rendered as italicized text (*smirks and crosses arms*) alongside dialogue — common in roleplay, gives characters more physical presence.
+- [x] **Non-verbal action formatting** — DONE 2026-09-03. `renderContent()` in ChatWindow.tsx now matches single-asterisk *action* text and renders it as italic slate-400, alongside the existing **bold** handling. Pure render-layer, no data model change.
 - **Multi-session continuity:** Long-term memory across separate chat sessions with the same character (currently each chat session starts fresh). Requires backend.
 
 ---
