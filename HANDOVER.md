@@ -284,6 +284,7 @@ README.md
 | 39 | **Phase 6 (13/N):** Voice lang captured in Voice Studio | CharacterSelect.tsx | Dropdown onChange now also stores the selected voice's `.lang`, feeding pickBestVoice()'s fallback tiers. |
 | 40 | **Phase 6 (14/N):** Voice package export/import engine | voiceEngine.ts | `exportVoicePackage()`, `downloadVoicePackage()`, `parseVoicePackage()`. Honestly scoped as portable settings, not an installable voice (browsers can't install OS-level TTS voices — confirmed via research). |
 | 41 | **Phase 6 (15/N):** Voice package UI wiring | CharacterSelect.tsx | Export/Import buttons in Voice Studio. Reuses a tuned voice across characters, fits the app's immutable-character/fork design. Completes the 3-part extension plan. |
+| 42 | **Phase 6:** iOS Safari speech-priming fix | voiceEngine.ts, ChatWindow.tsx | `primeSpeechIfNeeded()` fires a silent utterance synchronously on first user gesture (Send/mic/Voice Mode toggle) to unlock speech synthesis on iOS Safari before Voice Mode's post-await `speak()` call. Not yet verified on real iOS hardware. |
 
 ---
 
@@ -339,31 +340,18 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 
 ## 9. Priority Order for Next Session
 
-**All known bugs cleared. Phase 6 in progress — free-tier TTS research done, data model started.**
+**Phase 6 (Voice & Audio) is fully built and code-complete, including
+all 3 user-directed extensions and an iOS Safari fix. Nothing is
+half-finished.** Here's exactly what's done and what's next:
 
-1. **Phase 6 — Voice & Audio System** (see Section 6 above for full spec + research table)
-   - [x] VoiceSettings data model added to characterStore.ts
-   - [x] Web Speech API playback engine built (voiceEngine.ts)
-   - [x] Voice Studio UI in character creation (voice picker + live preview)
-   - [x] Mic input (SpeechRecognition) — wired into chat input
+**Done:**
+- [x] Core: VoiceSettings data model, Web Speech API playback engine, Voice Studio UI, Voice Mode toggle, mic input
+- [x] Extension 1/3: Voice analysis-assist tool (upload a sample → suggested pitch/rate)
+- [x] Extension 2/3: Emotion-aware prosody/pacing (speakExpressive)
+- [x] Extension 3/3: Voice package portability (fallback matching + export/import)
+- [x] iOS Safari speech-priming fix (primeSpeechIfNeeded, not yet device-tested)
 
-**Phase 6 core build (playback + mic) is complete.** Now extending with a
-3-part user-directed plan: (1) voice analysis-assist ✅ done, (2) prosody/
-pacing for emotional expression — IN PROGRESS, (3) voice package
-portability — not started. Real-device/cross-browser testing (especially
-mobile Safari mic support) is still outstanding and should happen before
-calling Phase 6 fully closed.
-
-   - [x] Voice analysis-assist tool (voiceAnalysis.ts + Voice Studio UI)
-   - [x] Prosody/pacing improvements — emotion-aware pitch/rate/pause via speakExpressive()
-   - [x] Voice package portability — pickBestVoice() fallback matching + export/import
-   - [ ] Avatar tool (Phase 8) remains explicitly deferred until Phase 6 is complete
-
-**Phase 6 (core + all 3 extensions) is now fully built.** Remaining
-before calling it done: real-device/cross-browser testing — mobile
-Safari mic support unverified, and iOS Safari requires speak() to be
-called from within a user gesture (confirmed via research) which may
-affect the Voice Mode auto-read-on-arrival flow specifically on iOS;
-this should be checked on an actual iPhone before considering Phase 6
-closed.
-
+**Next session should start with:**
+1. **Real-device testing** — this sandbox cannot test physical hardware, so nothing in Phase 6 has been verified on an actual phone yet. Test on: iOS Safari (mic input support, and whether the priming fix actually makes Voice Mode auto-read work), Android Chrome, desktop Firefox (weakest Web Speech API support of the major browsers). Fix whatever real-device testing turns up.
+2. Once Phase 6 testing is clean → **Phase 8, Avatar creation & customization tool** (explicitly deferred until Phase 6 was done — see Section 8 above for full confirmed scope: custom image upload → 2D avatar, animated or multi-frame for emotions, free-tier AI image tooling still needs research before any build starts).
+3. Phase 7 (Professional Coaching Modules) remains further out, after Phase 8.
