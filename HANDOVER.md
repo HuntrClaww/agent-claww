@@ -171,14 +171,14 @@ README.md
 - [ ] **Deferred, needs real API key from user:** ElevenLabs integration for true voice cloning — user provides their own free-tier ElevenLabs key in Settings (same pattern as the existing AI provider keys), never a payment method
 - [ ] Voice orb visualizer: CSS scale or canvas tied to `AnalyserNode` frequency data — client-side only, no cost implication
 
-### Phase 6.5 — Speech Recognition Robustness ⏳ PENDING (added 2026-09-03, user-directed)
+### Phase 6.5 — Speech Recognition Robustness ✅ COMPLETE 2026-09-03 (added same day, user-directed)
 Two-part scope, both requested together, built one focused piece at a time:
 
-1. **Mixed-language / code-switched word flagging** — browser `SpeechRecognition` takes a single `lang` and cannot natively transcribe code-switched speech (e.g. English sentence with a Spanish name or phrase dropped in). Honest scope boundary: this is NOT true multi-language transcription (Chrome's API doesn't expose that). What's buildable: post-hoc scan of the final transcript for low-frequency/unmatched tokens against a common-word list for the active language, flag them inline (not silently auto-corrected), user confirms/edits. Applies to both voice-transcribed and typed text.
-   - [ ] Common-word frequency list/dictionary for flagging (start with English, extensible)
-   - [ ] Token-flagging pass on final transcript + typed input
-   - [ ] Inline flag UI (non-intrusive, user-editable, not auto-substituted)
-   - [ ] Optional: on-demand micro-lookup for a flagged name/term (reuse characterFetch.ts's on-demand fetch pattern)
+1. **Mixed-language / code-switched word flagging** ✅ COMPLETE 2026-09-03 — browser `SpeechRecognition` takes a single `lang` and cannot natively transcribe code-switched speech (e.g. English sentence with a Spanish name or phrase dropped in). Honest scope boundary: this is NOT true multi-language transcription (Chrome's API doesn't expose that). What's buildable: post-hoc scan of the final transcript for low-frequency/unmatched tokens against a common-word list for the active language, flag them inline (not silently auto-corrected), user confirms/edits. Applies to both voice-transcribed and typed text.
+   - [x] Common-word frequency list/dictionary for flagging — DONE 2026-09-03. `wordFlagging.ts`: bundled common-English-word set + `flagUnusualTokens()`. English-only for now; extensible to other languages later (Unicode-aware tokenizer already in place).
+   - [x] Token-flagging pass on final transcript + typed input — DONE 2026-09-03. Applied to all `role==='user'` messages regardless of whether they arrived via mic or typing (both go through the same `handleSend` path into `messages`, so one flagging pass covers both).
+   - [x] Inline flag UI — DONE 2026-09-03. Dotted amber underline on flagged words in ChatWindow, via `renderContent()`'s `highlightFlagged`. Never auto-substitutes — purely visual, user notices and can look into it themselves.
+   - [x] Optional: on-demand micro-lookup — DONE 2026-09-03. Clicking a flagged word calls the existing `fetchCharacterInfo()` pipeline (characterFetch.ts) rather than a new dictionary API; result cached per-word in session state, shown as a small note under the message. "No match" is treated as a normal outcome.
 
 2. **Mic input robustness** ✅ COMPLETE 2026-09-03 — currently Phase 6 only touches `SpeechRecognition`, never raw `getUserMedia`/Web Audio, so there's no noise handling, quality feedback, or device awareness at all.
    - [x] Engine layer built (voiceEngine.ts, 2026-09-03): `checkMicSignalQuality()` (short getUserMedia sample with `echoCancellation`/`noiseSuppression`/`autoGainControl` enabled, reports silent/quiet/ok + muffled flag), `listAudioInputDevices()` + `watchAudioInputDevices()` (device enumeration + devicechange watcher), `isLikelyExternalAudioDevice()` (Bluetooth/headset label heuristic). NOT yet wired into any UI — next step.
@@ -355,9 +355,9 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 
 ## 9. Priority Order for Next Session
 
-**Phase 6 (Voice & Audio) is fully built and code-complete, including
-all 3 user-directed extensions and an iOS Safari fix. Nothing is
-half-finished.** Here's exactly what's done and what's next:
+**Phase 6 (Voice & Audio) and Phase 6.5 (Speech Recognition Robustness)
+are both fully built and code-complete. Nothing is half-finished.**
+Here's exactly what's done and what's next:
 
 **Done:**
 - [x] Core: VoiceSettings data model, Web Speech API playback engine, Voice Studio UI, Voice Mode toggle, mic input
@@ -365,8 +365,10 @@ half-finished.** Here's exactly what's done and what's next:
 - [x] Extension 2/3: Emotion-aware prosody/pacing (speakExpressive)
 - [x] Extension 3/3: Voice package portability (fallback matching + export/import)
 - [x] iOS Safari speech-priming fix (primeSpeechIfNeeded, not yet device-tested)
+- [x] Phase 6.5 Part 1: mixed-language/unusual-word flagging (flagUnusualTokens, inline UI, click-to-lookup) — see Section 3 for full detail
+- [x] Phase 6.5 Part 2: mic signal quality preflight + external device detection (checkMicSignalQuality, device watcher, UI wiring) — see Section 3 for full detail
 
 **Next session should start with:**
-1. **Real-device testing** — this sandbox cannot test physical hardware, so nothing in Phase 6 has been verified on an actual phone yet. Test on: iOS Safari (mic input support, and whether the priming fix actually makes Voice Mode auto-read work), Android Chrome, desktop Firefox (weakest Web Speech API support of the major browsers). Fix whatever real-device testing turns up.
-2. Once Phase 6 testing is clean → **Phase 8, Avatar creation & customization tool** (explicitly deferred until Phase 6 was done — see Section 8 above for full confirmed scope: custom image upload → 2D avatar, animated or multi-frame for emotions, free-tier AI image tooling still needs research before any build starts).
+1. **Real-device testing** — this sandbox cannot test physical hardware, so nothing in Phase 6 or 6.5 has been verified on an actual phone/mic yet. This now covers MORE ground than before Phase 6.5 was added: test on iOS Safari (mic input, priming fix, AND the new mic-quality-check permission flow — two separate getUserMedia-adjacent calls now happen around mic use), Android Chrome, desktop Firefox (weakest Web Speech API support of the major browsers), and specifically test with a Bluetooth headset connected/disconnected mid-session to verify the device-change watcher fires correctly. Fix whatever real-device testing turns up.
+2. Once that testing is clean → **Phase 8, Avatar creation & customization tool** (explicitly deferred until Phase 6 was done — see Section 8 above for full confirmed scope: custom image upload → 2D avatar, animated or multi-frame for emotions, free-tier AI image tooling still needs research before any build starts).
 3. Phase 7 (Professional Coaching Modules) remains further out, after Phase 8.
