@@ -3,6 +3,7 @@ import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2,
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { createCharacter, listCharacters, deleteCharacter, PORTRAIT_MAX_KB, EMOTION_PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode, type VoiceSettings } from '../lib/characterStore';
 import { compressPortrait } from '../lib/imageCompress';
+import { generateAllEmotionVariants } from '../lib/avatarFilters';
 import { getAvailableVoices, speak, isVoiceSupported, downloadVoicePackage, parseVoicePackage } from '../lib/voiceEngine';
 import { analyzeVoiceSample, type VoiceAnalysisResult } from '../lib/voiceAnalysis';
 import { EMOTION_EMOJI, type Emotion } from '../lib/emotionDetect';
@@ -130,6 +131,22 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
       return;
     }
     setEmotionPortraits(prev => ({ ...prev, [emotion]: dataUrl }));
+  };
+
+  // Phase 8 zero-cost fallback tier: one-click generated variants from
+  // the base portrait via canvas color filters. Never overwrites a
+  // slot the user has already manually uploaded - generated variants
+  // only fill in gaps.
+  const [generatingVariants, setGeneratingVariants] = useState(false);
+  const handleGenerateVariants = async () => {
+    if (!portraitDataUrl) return;
+    setGeneratingVariants(true);
+    try {
+      const variants = await generateAllEmotionVariants(portraitDataUrl);
+      setEmotionPortraits(prev => ({ ...variants, ...prev }));
+    } finally {
+      setGeneratingVariants(false);
+    }
   };
 
   const clearEmotionSlot = (emotion: Emotion) => {
@@ -364,6 +381,16 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
               >
                 {showEmotionSlots ? '\u2212' : '+'} Add emotion-specific art (optional)
               </button>
+              {showEmotionSlots && portraitDataUrl && (
+                <button
+                  onClick={handleGenerateVariants}
+                  disabled={generatingVariants}
+                  title="Fills empty slots with tinted variants of your base photo — a quick color/mood shift, not a redrawn expression. Won't overwrite anything you've already uploaded."
+                  className="ml-3 text-xs text-teal-400 hover:text-teal-300 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                >
+                  {generatingVariants ? 'Generating…' : '✨ Fill gaps from base photo'}
+                </button>
+              )}
               {showEmotionSlots && (
                 <div className="mt-2.5 grid grid-cols-4 gap-2">
                   {OPTIONAL_EMOTION_SLOTS.map(emo => (
