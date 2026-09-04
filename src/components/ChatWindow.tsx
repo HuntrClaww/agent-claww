@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import SettingsModal from './SettingsModal';
 import CharacterSelect from './CharacterSelect';
 import CharacterPortrait from './CharacterPortrait';
@@ -9,6 +9,7 @@ import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
 import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
 import { speakExpressive, stopSpeaking, isVoiceSupported, isMicSupported, startListening, stopListening, primeSpeechIfNeeded, checkMicSignalQuality, listAudioInputDevices, watchAudioInputDevices, isLikelyExternalAudioDevice } from '../lib/voiceEngine';
+import { flagUnusualTokens, extractKnownProperNouns } from '../lib/wordFlagging';
 
 // Define what a single message looks like
 interface Message {
@@ -353,8 +354,47 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     }
   };
 
+  // Phase 6.5 Part 1: allowlist for unusual-word flagging, built from the
+  // active character's own name/bio so their name and in-universe terms
+  // don't get repeatedly flagged as "unusual". Generic Mode has no saved
+  // character, so this is empty there (fine - flagging still works, just
+  // without character-specific exemptions).
+  const flaggingAllowlist = useMemo(() => {
+    if (activeMode?.kind !== 'personality' || !activeMode.characterId) return [];
+    const saved = getCharacter(activeMode.characterId);
+    if (!saved) return [];
+    const names = saved.name.split(/\s+/);
+    const bioNouns = extractKnownProperNouns(
+      [saved.summary, saved.personality, saved.background].filter(Boolean).join(' ')
+    );
+    return [...names, ...bioNouns];
+  }, [activeMode]);
+
   // Minimal renderer so **bold** in AI replies is displayed as actual bold text
-  const renderContent = (content: string) => {
+  const renderContent = (content: string, flaggedTokens: string[] = []) => {
+    const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Highlights exact occurrences of already-flagged tokens within a
+    // leaf of plain text. Runs after the bold/action splitting below so
+    // it only ever touches genuine text content, never markup.
+    const highlightFlagged = (text: string): React.ReactNode => {
+      if (flaggedTokens.length === 0 || !text) return text;
+      const pattern = new RegExp(`(${flaggedTokens.map(escapeRegExp).join('|')})`, 'g');
+      const segments = text.split(pattern);
+      return segments.map((seg, k) =>
+        flaggedTokens.includes(seg) ? (
+          <span
+            key={k}
+            className="underline decoration-dotted decoration-amber-400 underline-offset-2 cursor-help"
+            title="Unusual word — worth a quick check that this was heard/typed correctly"
+          >
+            {seg}
+          </span>
+        ) : (
+          seg
+        )
+      );
+    };
+
     // Order matters: bold (**x**) is matched first so its asterisks are
     // consumed before the single-asterisk action-text pass ever sees them.
     const parts = content.split(/(\*\*[^*]+\*\*)/g);
@@ -362,7 +402,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       if (part.length > 4 && part.startsWith('**') && part.endsWith('**')) {
         return (
           <strong key={i} className="font-semibold text-teal-300">
-            {part.slice(2, -2)}
+            {highlightFlagged(part.slice(2, -2))}
           </strong>
         );
       }
@@ -374,10 +414,10 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
           {actionParts.map((ap, j) =>
             ap.length > 2 && ap.startsWith('*') && ap.endsWith('*') ? (
               <em key={j} className="text-slate-400 italic">
-                {ap.slice(1, -1)}
+                {highlightFlagged(ap.slice(1, -1))}
               </em>
             ) : (
-              <span key={j}>{ap}</span>
+              <span key={j}>{highlightFlagged(ap)}</span>
             )
           )}
         </span>
@@ -512,7 +552,14 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                           : 'bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-600 text-slate-100 rounded-tl-sm shadow-md hover:shadow-lg backdrop-blur-sm'
                       }`}
                     >
-                      <p className="leading-relaxed whitespace-pre-wrap text-sm">{renderContent(msg.content)}</p>
+                      <p className="leading-relaxed whitespace-pre-wrap text-sm">
+                        {renderContent(
+                          msg.content,
+                          msg.role === 'user'
+                            ? flagUnusualTokens(msg.content, flaggingAllowlist).map(t => t.token)
+                            : []
+                        )}
+                      </p>
                       {msg.citation && (
                         <p className="text-[10px] text-slate-500 mt-2 pt-2 border-t border-slate-700/60">
                           {msg.citation}
