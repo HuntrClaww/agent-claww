@@ -198,13 +198,25 @@ Two-part scope, both requested together, built one focused piece at a time:
 - [ ] Zero-gating philosophy applies here too: full access on day one, no XP/level locks
 - [ ] Supabase schema needed: `coaching_sessions`, `user_skills` tables (SQL draft exists in Gemini chat)
 
-### Phase 8 — Avatar Creation & Customization Tool ⏳ PENDING (future, deferred until after Phase 6)
+### Phase 8 — Avatar Creation & Customization Tool ⏳ IN PROGRESS (started 2026-09-03, Phase 6/6.5 now both complete)
 **Confirmed scope (2026-09-02 discussion with user):**
 - Core idea: user uploads ANY custom image — original art, a famous actor in a specific role, any character — and it gets transformed into a 2D avatar
 - Output can be either animated OR broken into multiple frames to express different emotions (ties into existing `emotionPortraits` sparse-slot system from Phase 3)
 - Combines both an in-app builder (style/feature customization) AND possible AI-driven image generation/transformation from the uploaded source
 - **Open concern from user:** this is a heavy-free-tier web app — need to carefully research which AI image generation/transformation tools have usable free tiers, or consider building a lightweight custom solution that works within free-tier constraints (cost is the primary blocker, not concept)
 - Not yet spec'd in technical detail — needs a dedicated scoping session before implementation starts
+
+**Free-tier AI image tooling research (2026-09-03) — findings:**
+- **Google Gemini 2.5 Flash Image ("Nano Banana")** is the standout candidate: ~500 requests/day free via an AI Studio API key, no credit card required. **Strong architectural fit** — StageEgo already has a Gemini provider integrated for chat (`apiClient.ts sendToGemini()`, BYOK model via `user_api_key` localStorage key), so avatar generation could plausibly reuse the same API key field instead of requiring separate key management UI. Worth prototyping first.
+- **Cloudflare Workers AI** and **Hugging Face Inference** also have genuine (capped, not trial-expiring) free tiers, no credit card — viable fallback/secondary options.
+- **Caution flagged by research:** most "free tier" image APIs found (Leonardo, Replicate, Stability, Freepik/Magnific, ImaginePro, Apiframe) are signup *credit grants* that expire once spent, not recurring free tiers — don't build the primary path around one of these, they're trial credits, not a stable free tier.
+- **Recommendation:** prototype against Gemini's free tier first (best fit + reuses existing key infra), with the client-side CSS/canvas-filter approach (below) as a zero-cost fallback tier regardless of which/whether an image API gets adopted.
+
+- [ ] **Zero-cost emotion-variant fallback tier** — building next, ahead of any AI image API decision, since it de-risks the whole phase (works even if no free image API pans out). Plan: generate sad/angry/happy/etc. emotion variants from ONE uploaded base image via canvas filters (brightness/saturation/hue-rotate), no external API, no cost. Not a replacement for true AI-generated multi-frame art — a same-day-usable baseline tier underneath it.
+- [ ] Prototype Gemini 2.5 Flash Image avatar generation against the existing BYOK key infra
+- [ ] In-app style/feature customization builder — not yet spec'd
+- [ ] Live/animated mode — technology candidates (Live2D, PixiJS, talkinghead.js) still just candidates, no decision made
+- [ ] Full technical scoping session still needed before the AI-generation path or live/animated mode are built — the canvas-filter tier above is intentionally the only piece built without that session, since it's low-risk/reversible
 
 **Prior technical notes (from earlier design discussion, still relevant):**
 - [ ] Static Mode (default): 2D emotion sprites — already built in Phase 2/3
@@ -216,7 +228,8 @@ Two-part scope, both requested together, built one focused piece at a time:
 - [ ] Client-side alternative (no server cost): talkinghead.js / Canvas 2D mesh morphing — likely the safer free-tier-first starting point
 - [ ] Face landmark detection: lightweight JS library for auto-cropping on upload
 
-**Explicitly deferred until Phase 6 (Voice & Audio) is complete.**
+**No longer fully deferred — the zero-cost fallback tier above is being built now since it needs no scoping decision. AI-generation path and live mode remain deferred pending a dedicated scoping session.**
+
 
 ### Phase 9 — Backend / Data Sovereignty ⏳ DEFERRED
 - [ ] Move all character data from localStorage to Supabase (user-scoped, row-level security)
