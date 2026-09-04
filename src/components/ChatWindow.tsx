@@ -370,8 +370,29 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     return [...names, ...bioNouns];
   }, [activeMode]);
 
+  // Phase 6.5 Part 1 (optional add-on): click-to-lookup for a flagged
+  // word. Reuses the existing character-fetch pipeline rather than a
+  // new, unresearched dictionary API - a solid fit since flagged words
+  // are very often names. Results are cached per-word for the session;
+  // "no match" is a normal, expected outcome for ordinary flagged words,
+  // not an error.
+  const [wordLookup, setWordLookup] = useState<Record<string, { status: 'loading' | 'done'; text: string }>>({});
+  const handleWordLookup = async (word: string) => {
+    if (wordLookup[word]) return; // already looked up or in flight
+    setWordLookup(prev => ({ ...prev, [word]: { status: 'loading', text: 'Looking up…' } }));
+    try {
+      const info = await fetchCharacterInfo(word);
+      const text = info
+        ? `${info.summary.slice(0, 140)}${info.summary.length > 140 ? '…' : ''} ${citationTag(info)}`
+        : 'No quick match found — likely just a name, term, or word not covered by these sources.';
+      setWordLookup(prev => ({ ...prev, [word]: { status: 'done', text } }));
+    } catch {
+      setWordLookup(prev => ({ ...prev, [word]: { status: 'done', text: 'Lookup failed — try again later.' } }));
+    }
+  };
+
   // Minimal renderer so **bold** in AI replies is displayed as actual bold text
-  const renderContent = (content: string, flaggedTokens: string[] = []) => {
+  const renderContent = (content: string, flaggedTokens: string[] = [], onFlaggedClick?: (token: string) => void) => {
     const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // Highlights exact occurrences of already-flagged tokens within a
     // leaf of plain text. Runs after the bold/action splitting below so
@@ -384,8 +405,9 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
         flaggedTokens.includes(seg) ? (
           <span
             key={k}
-            className="underline decoration-dotted decoration-amber-400 underline-offset-2 cursor-help"
-            title="Unusual word — worth a quick check that this was heard/typed correctly"
+            className="underline decoration-dotted decoration-amber-400 underline-offset-2 cursor-help hover:text-amber-300"
+            title="Unusual word — click for a quick lookup, or just double-check it was heard/typed correctly"
+            onClick={() => onFlaggedClick?.(seg)}
           >
             {seg}
           </span>
@@ -525,7 +547,11 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
             <div className="flex-1 p-6 overflow-y-auto">
               <div className="flex flex-col space-y-6 max-w-3xl mx-auto">
                 
-                {messages.map((msg) => (
+                {messages.map((msg) => {
+                  const msgFlaggedTokens = msg.role === 'user'
+                    ? flagUnusualTokens(msg.content, flaggingAllowlist).map(t => t.token)
+                    : [];
+                  return (
                   <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                     
                     {/* Avatar */}
@@ -553,13 +579,17 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                       }`}
                     >
                       <p className="leading-relaxed whitespace-pre-wrap text-sm">
-                        {renderContent(
-                          msg.content,
-                          msg.role === 'user'
-                            ? flagUnusualTokens(msg.content, flaggingAllowlist).map(t => t.token)
-                            : []
-                        )}
+                        {renderContent(msg.content, msgFlaggedTokens, handleWordLookup)}
                       </p>
+                      {msgFlaggedTokens.some(t => wordLookup[t]) && (
+                        <div className="text-[10px] text-amber-200/70 mt-2 pt-2 border-t border-slate-700/60 space-y-1">
+                          {msgFlaggedTokens.filter(t => wordLookup[t]).map(t => (
+                            <p key={t}>
+                              <span className="font-semibold">{t}:</span> {wordLookup[t].text}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                       {msg.citation && (
                         <p className="text-[10px] text-slate-500 mt-2 pt-2 border-t border-slate-700/60">
                           {msg.citation}
@@ -568,7 +598,9 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                     </div>
 
                   </div>
-                ))}
+                  );
+                })}
+
 
                 {/* Typing Indicator */}
                 {isTyping && (
