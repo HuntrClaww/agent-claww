@@ -33,6 +33,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [voiceRate, setVoiceRate] = useState(1);
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
   const [showVoiceStudioHelp, setShowVoiceStudioHelp] = useState(false);
+  const [showEmotionSlotsHelp, setShowEmotionSlotsHelp] = useState(false);
   const [voiceAnalysisResult, setVoiceAnalysisResult] = useState<VoiceAnalysisResult | null>(null);
   const [voiceAnalysisError, setVoiceAnalysisError] = useState<string | null>(null);
   const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
@@ -376,12 +377,22 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
 
             {/* Optional per-emotion portrait slots */}
             <div className="mb-3">
-              <button
-                onClick={() => setShowEmotionSlots(v => !v)}
-                className="text-xs text-slate-500 hover:text-amber-300 transition-colors flex items-center gap-1"
-              >
-                {showEmotionSlots ? '\u2212' : '+'} Add emotion-specific art (optional)
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setShowEmotionSlots(v => !v)}
+                  className="text-xs text-slate-500 hover:text-amber-300 transition-colors flex items-center gap-1"
+                >
+                  {showEmotionSlots ? '\u2212' : '+'} Add emotion-specific art (optional)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEmotionSlotsHelp(true)}
+                  title="What is this?"
+                  className="text-slate-500 hover:text-teal-300 transition-colors"
+                >
+                  <HelpCircle size={13} />
+                </button>
+              </div>
               {showEmotionSlots && portraitDataUrl && (
                 <button
                   onClick={handleGenerateVariants}
@@ -687,6 +698,44 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
 
               <p className="text-xs text-slate-500 border-t border-slate-700 pt-3">
                 None of this is required — a character works fine with no voice set at all, StageEgo just won't read their replies aloud.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Emotion-specific art help popup */}
+      {showEmotionSlotsHelp && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4" onClick={() => setShowEmotionSlotsHelp(false)}>
+          <div
+            className="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-3 border-b border-slate-700 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-teal-400">Emotion-specific art</h3>
+              <button onClick={() => setShowEmotionSlotsHelp(false)} className="text-slate-500 hover:text-slate-300">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-4 text-sm text-slate-300">
+              <p className="text-slate-400">
+                By default a character shows one portrait no matter what they're feeling. These slots let you add different art for different emotions (happy, sad, angry, and so on) — when the AI's reply reads as one of those emotions, that portrait shows instead. Every slot is optional; leave any of them blank and the base portrait is used for that emotion.
+              </p>
+
+              <div>
+                <p className="font-semibold text-slate-200 mb-1.5">Two ways to fill a slot:</p>
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>
+                    <span className="font-semibold text-slate-200">Upload your own art</span> for that specific emotion — click any slot and choose an image.
+                  </li>
+                  <li>
+                    <span className="font-semibold text-slate-200">"✨ Fill gaps from base photo"</span> — a one-click option that generates a variant for every empty slot using your existing base photo. Important: this shifts color and tone (warmer, cooler, darker, more saturated) to suggest a mood — it does NOT redraw the face or change the expression. It's a quick placeholder, not a substitute for real emotion-specific art. It will never overwrite a slot you've filled yourself.
+                  </li>
+                </ol>
+              </div>
+
+              <p className="text-xs text-slate-500 border-t border-slate-700 pt-3">
+                You can mix both — some slots with your own uploaded art, others filled by the generator, and some left blank entirely.
               </p>
             </div>
           </div>
