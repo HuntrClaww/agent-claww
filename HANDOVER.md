@@ -372,7 +372,12 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 - **Mode string format (do not change):** `'generic'` or `'personality:behavior:name:characterId'` — parsed by `parseMode()` in ChatWindow.tsx. Adding a 5th segment would break parsing.
 - **localStorage keys in use:** `user_api_key`, `profanity_filter`, `ai_temperature`, `stageego_characters`.
 - **Events in use:** `profileUpdated` (re-init API client), `charactersUpdated` (refresh saved list).
-- **Help-popup pattern established (2026-09-03):** circular "?" (HelpCircle icon) next to a field label, opens a step-by-step instructions popup on its own higher-z-index overlay. First instance: API Key field in Settings > Standard Assistant (`SettingsModal.tsx`, `showKeyHelp` state). Reuse this exact pattern for any future field that needs in-context instructions rather than inventing a new help UI each time.
+- **Help-popup pattern established (2026-09-03):** circular "?" (HelpCircle icon) next to a field label, opens a step-by-step instructions popup on its own higher-z-index overlay (`z-[60]`, `fixed inset-0` backdrop, `onClick={(e) => e.stopPropagation()}` on the card so clicking the backdrop closes it). Four instances built so far, all in this exact pattern:
+  1. API Key field — Settings > Standard Assistant (`SettingsModal.tsx`, `showKeyHelp`)
+  2. Voice Studio — CharacterSelect.tsx, `showVoiceStudioHelp`
+  3. Emotion-specific art slots — CharacterSelect.tsx, `showEmotionSlotsHelp`
+  4. Fork/character-immutability — CharacterSelect.tsx, `showForkHelp`
+  Considered but deliberately skipped: Temperature slider and Profanity Tolerance (Settings > Advanced/Characters) — both already have adequate one-line inline explanations with no hidden multi-step mechanics, so a popup there would be decorative rather than genuinely useful. Reuse this exact pattern for any future field that needs in-context instructions rather than inventing a new help UI each time.
 - **No Supabase for character data yet** — everything is localStorage. Don't assume otherwise.
 - **Portrait images are base64 in localStorage** — this is prototype-only. Move to Supabase Storage in Phase 9.
 - **Deployment URL:** `maihuku.netlify.app` — ⚠️ flagged to deal with later, not confirmed aligned with current build.
