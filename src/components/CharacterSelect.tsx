@@ -34,6 +34,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
   const [showVoiceStudioHelp, setShowVoiceStudioHelp] = useState(false);
   const [showEmotionSlotsHelp, setShowEmotionSlotsHelp] = useState(false);
+  const [showForkHelp, setShowForkHelp] = useState(false);
   const [voiceAnalysisResult, setVoiceAnalysisResult] = useState<VoiceAnalysisResult | null>(null);
   const [voiceAnalysisError, setVoiceAnalysisError] = useState<string | null>(null);
   const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
@@ -303,8 +304,16 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
               <div className="mb-4 flex items-start gap-2 bg-cyan-500/5 border border-cyan-500/20 rounded-lg px-3 py-2.5">
                 <GitFork size={14} className="text-cyan-400 mt-0.5 shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-xs text-cyan-300">
+                  <p className="text-xs text-cyan-300 flex items-center gap-1.5">
                     Forking from <span className="font-medium">{forkSource.name}</span> — this creates a brand new character.
+                    <button
+                      type="button"
+                      onClick={() => setShowForkHelp(true)}
+                      title="Why fork instead of edit?"
+                      className="text-cyan-500/70 hover:text-teal-300 transition-colors shrink-0"
+                    >
+                      <HelpCircle size={12} />
+                    </button>
                   </p>
                   <button
                     onClick={() => { setForkFromId(null); setSeedContext(''); }}
@@ -736,6 +745,37 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
 
               <p className="text-xs text-slate-500 border-t border-slate-700 pt-3">
                 You can mix both — some slots with your own uploaded art, others filled by the generator, and some left blank entirely.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fork/immutability help popup */}
+      {showForkHelp && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4" onClick={() => setShowForkHelp(false)}>
+          <div
+            className="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-3 border-b border-slate-700 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-teal-400">Why fork instead of edit?</h3>
+              <button onClick={() => setShowForkHelp(false)} className="text-slate-500 hover:text-slate-300">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-3 text-sm text-slate-300">
+              <p>
+                Characters in StageEgo are locked once created — you can delete one, but you can't edit its core details (name, personality, behavior mode) afterward.
+              </p>
+              <p>
+                <span className="font-semibold text-slate-200">Forking</span> is how you make a changed version: it creates a brand-new character that starts from the original's details, which you can then adjust before saving. The original character is untouched and still exists separately.
+              </p>
+              <p>
+                <span className="font-semibold text-slate-200">"Paste what to carry over"</span> is optional — if you want the new fork to remember something specific from before (a quote, a fact, a moment), paste just that, not a full chat transcript. Leave it blank for a clean fork with no extra context.
+              </p>
+              <p className="text-xs text-slate-500 border-t border-slate-700 pt-3">
+                This keeps each character's identity stable and predictable over time, rather than quietly drifting after repeated small edits.
               </p>
             </div>
           </div>
