@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2, ImagePlus, X } from 'lucide-react';
+import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2, ImagePlus, X, HelpCircle } from 'lucide-react';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { createCharacter, listCharacters, deleteCharacter, PORTRAIT_MAX_KB, EMOTION_PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode, type VoiceSettings } from '../lib/characterStore';
 import { compressPortrait } from '../lib/imageCompress';
@@ -32,6 +32,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [voicePitch, setVoicePitch] = useState(1);
   const [voiceRate, setVoiceRate] = useState(1);
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
+  const [showVoiceStudioHelp, setShowVoiceStudioHelp] = useState(false);
   const [voiceAnalysisResult, setVoiceAnalysisResult] = useState<VoiceAnalysisResult | null>(null);
   const [voiceAnalysisError, setVoiceAnalysisError] = useState<string | null>(null);
   const [isAnalyzingVoice, setIsAnalyzingVoice] = useState(false);
@@ -430,12 +431,22 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
             {/* Voice Studio - optional per-character voice tuning (Web Speech API, $0 cost) */}
             {isVoiceSupported() && (
               <div className="mb-3">
-                <button
-                  onClick={() => setShowVoiceStudio(v => !v)}
-                  className="text-xs text-slate-500 hover:text-amber-300 transition-colors flex items-center gap-1"
-                >
-                  {showVoiceStudio ? '\u2212' : '+'} Set a voice (optional)
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setShowVoiceStudio(v => !v)}
+                    className="text-xs text-slate-500 hover:text-amber-300 transition-colors flex items-center gap-1"
+                  >
+                    {showVoiceStudio ? '\u2212' : '+'} Set a voice (optional)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowVoiceStudioHelp(true)}
+                    title="How does Voice Studio work?"
+                    className="text-slate-500 hover:text-teal-300 transition-colors"
+                  >
+                    <HelpCircle size={13} />
+                  </button>
+                </div>
                 {showVoiceStudio && (
                   <div className="mt-2.5 bg-slate-900/50 border border-slate-700 rounded-lg p-3 space-y-3">
                     <div>
@@ -637,6 +648,50 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
           You can leave this session anytime to flip the coin again.
         </p>
       </div>
+
+      {/* Voice Studio help popup */}
+      {showVoiceStudioHelp && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4" onClick={() => setShowVoiceStudioHelp(false)}>
+          <div
+            className="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pt-5 pb-3 border-b border-slate-700 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-teal-400">How Voice Studio works</h3>
+              <button onClick={() => setShowVoiceStudioHelp(false)} className="text-slate-500 hover:text-slate-300">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-4 text-sm text-slate-300">
+              <p className="text-slate-400">
+                Voice Studio lets a character speak their replies aloud using your browser's built-in text-to-speech — no external service, no cost. Everything here is optional.
+              </p>
+
+              <ol className="list-decimal list-inside space-y-2.5">
+                <li>
+                  <span className="font-semibold text-slate-200">Pick a system voice.</span> This is one of the speech voices already built into your browser/device (not something StageEgo creates) — different browsers and devices offer different voices, so the same character may sound different on your phone vs your laptop.
+                </li>
+                <li>
+                  <span className="font-semibold text-slate-200">Adjust pitch and speed</span> with the sliders to shape how that voice sounds — higher/lower pitch, faster/slower pace.
+                </li>
+                <li>
+                  <span className="font-semibold text-slate-200">Preview</span> to hear the current settings before saving.
+                </li>
+                <li>
+                  <span className="font-semibold text-slate-200">Optional: upload a sample clip.</span> If you have an audio clip of how the character should sound, upload it and StageEgo will suggest starting pitch/speed values based on it. This does NOT clone the voice — it only estimates and pre-fills the sliders above, which you can still adjust.
+                </li>
+                <li>
+                  <span className="font-semibold text-slate-200">Optional: export/import.</span> Export saves this voice's settings (not audio) as a small file, so you can reuse the same pitch/speed/voice choice on a different character later, or share it. Importing on another device matches to the closest available voice there, since exact voice names aren't guaranteed to exist on every browser.
+                </li>
+              </ol>
+
+              <p className="text-xs text-slate-500 border-t border-slate-700 pt-3">
+                None of this is required — a character works fine with no voice set at all, StageEgo just won't read their replies aloud.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
