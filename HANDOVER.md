@@ -243,6 +243,19 @@ StageEgo already proves this exact pattern in `characterFetch.ts` (try source A 
 
 **No longer fully deferred — the zero-cost fallback tier above is being built now since it needs no scoping decision. AI-generation path and live mode remain deferred pending a dedicated scoping session.**
 
+### Phase 8.5 — Guided Assistant / Onboarding Helper ⏳ IN PROGRESS (started 2026-09-03, user-directed)
+**Goal (user's own framing):** help new/first-time users understand how to navigate a given setting or feature, beyond what the per-field help popups already cover in isolation.
+
+**Foundation already in place:** the four help popups built earlier this session (API Key, Voice Studio, Emotion-specific art, Fork/immutability — see the "Help-popup pattern" note above) are exactly the kind of content a guided assistant needs. Rather than writing new explanatory copy from scratch, the plan is to:
+1. **Extract the existing popup content into a shared, structured data source** (`helpContent.ts` — topic id, title, body) so it's reusable both by the existing per-field "?" buttons AND a new global help surface, instead of the same explanations existing twice.
+2. **Build a global Help Hub** — one entry point (not yet decided: floating button vs header icon) that lists all help topics, searchable, so a user can find guidance on ANY setting from one place rather than only stumbling onto the right "?" icon by chance.
+3. **First-time-user detection** — a subtler, more proactive layer on top of the Hub: detect a genuinely first-time user (no characters saved yet, no prior visit flag in localStorage) and surface something more actively guiding than a passive help icon — exact mechanism (banner? auto-opened tour? suggested first steps?) not yet decided, needs to stay unobtrusive and skippable.
+- [ ] Design the topic data shape and migrate the 4 existing popups' content into it (still rendered from their current "?" buttons, just sourced from one shared place)
+- [ ] Build the Help Hub UI (search + topic list + detail view)
+- [ ] Decide + build the entry point (where the Hub opens from)
+- [ ] Design first-time-user detection + what it actually surfaces (not yet decided — needs its own small scoping step, kept deliberately light so it doesn't turn into a heavy onboarding-wizard rebuild)
+- [ ] Additional topics beyond the 4 existing ones, once the Hub exists: Generic vs Personality mode (the core "flip the coin" concept), general navigation/what-is-this-app-for
+
 
 ### Phase 9 — Backend / Data Sovereignty ⏳ DEFERRED
 - [ ] Move all character data from localStorage to Supabase (user-scoped, row-level security)
