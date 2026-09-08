@@ -103,6 +103,21 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
     return () => window.removeEventListener('charactersUpdated', refresh);
   }, []);
 
+  // Phase 8.5: light, one-time nudge for genuinely first-time users -
+  // no characters saved yet AND never seen before. Fires the flag as
+  // soon as the decision to show is made (not on dismiss), so it's a
+  // true one-time nudge even if the user navigates away without
+  // touching it. Deliberately just a dismissible banner, not a modal
+  // or forced tour - "unobtrusive and skippable" per the Phase 8.5 plan.
+  const [showFirstTimeBanner, setShowFirstTimeBanner] = useState(false);
+  useEffect(() => {
+    const alreadyVisited = localStorage.getItem('stageego_visited');
+    if (!alreadyVisited && listCharacters().length === 0) {
+      setShowFirstTimeBanner(true);
+      localStorage.setItem('stageego_visited', 'true');
+    }
+  }, []);
+
   const handleUseSaved = (character: SavedCharacter) => {
     onSelect(`personality:${character.behavior}:${character.name}:${character.id}`);
   };
@@ -195,6 +210,22 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   return (
     <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
       <div className="max-w-5xl w-full py-8">
+
+        {/* First-time nudge - light, dismissible, never shown twice */}
+        {showFirstTimeBanner && (
+          <div className="mb-6 flex items-center justify-between gap-3 bg-teal-500/10 border border-teal-500/30 rounded-lg px-4 py-2.5">
+            <p className="text-xs text-teal-200">
+              New here? Tap <HelpCircle size={12} className="inline mx-0.5 -mt-0.5" /> Help in the sidebar anytime for a guide to how things work.
+            </p>
+            <button
+              onClick={() => setShowFirstTimeBanner(false)}
+              className="text-teal-400/70 hover:text-teal-200 transition-colors shrink-0"
+              title="Dismiss"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         {/* Header */}
         <div className="text-center mb-10">
