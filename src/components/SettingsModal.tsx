@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, AlertCircle, Zap, Settings2, Bot, Users, SlidersHorizontal, Trash2, HelpCircle, X } from 'lucide-react';
+import { CheckCircle, AlertCircle, Zap, Settings2, Bot, Users, SlidersHorizontal, Trash2, HelpCircle } from 'lucide-react';
+import HelpPopup from './HelpPopup';
 import { validateAPIKey } from '../lib/apiValidator';
 import { listCharacters, deleteCharacter } from '../lib/characterStore';
 
@@ -263,63 +264,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
       </div>
 
       {/* API key help popup */}
-      {showKeyHelp && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4" onClick={() => setShowKeyHelp(false)}>
-          <div
-            className="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 pt-5 pb-3 border-b border-slate-700 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-teal-400">Getting an API key</h3>
-              <button onClick={() => setShowKeyHelp(false)} className="text-slate-500 hover:text-slate-300">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-5 overflow-y-auto space-y-5 text-sm text-slate-300">
-              <p className="text-slate-400">
-                You only need ONE of these — pick whichever provider you'd like StageEgo to use. Keys are pasted into the field above and stored only in your browser, never sent anywhere but that provider's API.
-              </p>
-
-              <div>
-                <p className="font-semibold text-slate-200 mb-1.5">Google Gemini <span className="text-slate-500 font-normal">(has a free tier — good starting point)</span></p>
-                <ol className="list-decimal list-inside space-y-1 text-slate-300">
-                  <li>Go to <span className="text-teal-300">aistudio.google.com</span> and sign in with a Google account</li>
-                  <li>Click "Get API key" (usually in the left sidebar or top-right)</li>
-                  <li>Click "Create API key" and choose (or create) a project</li>
-                  <li>Copy the key it generates — it's a long string, no spaces</li>
-                  <li>Paste it into the API Key field above and save</li>
-                </ol>
-              </div>
-
-              <div>
-                <p className="font-semibold text-slate-200 mb-1.5">Anthropic (Claude)</p>
-                <ol className="list-decimal list-inside space-y-1 text-slate-300">
-                  <li>Go to <span className="text-teal-300">console.anthropic.com</span> and sign in or create an account</li>
-                  <li>Open "API Keys" from the sidebar</li>
-                  <li>Click "Create Key", give it any name, and copy the key</li>
-                  <li>Paste it into the API Key field above and save</li>
-                </ol>
-                <p className="text-xs text-slate-500 mt-1">Note: Anthropic's API requires billing to be set up — it doesn't have a free tier.</p>
-              </div>
-
-              <div>
-                <p className="font-semibold text-slate-200 mb-1.5">OpenAI</p>
-                <ol className="list-decimal list-inside space-y-1 text-slate-300">
-                  <li>Go to <span className="text-teal-300">platform.openai.com</span> and sign in or create an account</li>
-                  <li>Open "API keys" from the account menu</li>
-                  <li>Click "Create new secret key" and copy it immediately — it's only shown once</li>
-                  <li>Paste it into the API Key field above and save</li>
-                </ol>
-                <p className="text-xs text-slate-500 mt-1">Note: OpenAI's API requires billing to be set up — it doesn't have a free tier.</p>
-              </div>
-
-              <p className="text-xs text-slate-500 border-t border-slate-700 pt-3">
-                Having trouble? Double-check you copied the whole key with no extra spaces, and that you're pasting it into this app's key field, not a provider's own chat interface.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {showKeyHelp && <HelpPopup topicId="api-key" onClose={() => setShowKeyHelp(false)} />}
     </div>
   );
 }
