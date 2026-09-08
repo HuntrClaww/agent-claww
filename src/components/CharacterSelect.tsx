@@ -7,6 +7,7 @@ import { generateAllEmotionVariants } from '../lib/avatarFilters';
 import { getAvailableVoices, speak, isVoiceSupported, downloadVoicePackage, parseVoicePackage } from '../lib/voiceEngine';
 import { analyzeVoiceSample, type VoiceAnalysisResult } from '../lib/voiceAnalysis';
 import { EMOTION_EMOJI, type Emotion } from '../lib/emotionDetect';
+import HelpPopup from './HelpPopup';
 
 const DEFAULT_THEME_COLOR = '#f59e0b'; // matches the app's existing amber accent
 // A curated subset of the full emotion set - keeps the creation form usable.
@@ -670,117 +671,13 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
       </div>
 
       {/* Voice Studio help popup */}
-      {showVoiceStudioHelp && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4" onClick={() => setShowVoiceStudioHelp(false)}>
-          <div
-            className="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 pt-5 pb-3 border-b border-slate-700 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-teal-400">How Voice Studio works</h3>
-              <button onClick={() => setShowVoiceStudioHelp(false)} className="text-slate-500 hover:text-slate-300">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-5 overflow-y-auto space-y-4 text-sm text-slate-300">
-              <p className="text-slate-400">
-                Voice Studio lets a character speak their replies aloud using your browser's built-in text-to-speech — no external service, no cost. Everything here is optional.
-              </p>
-
-              <ol className="list-decimal list-inside space-y-2.5">
-                <li>
-                  <span className="font-semibold text-slate-200">Pick a system voice.</span> This is one of the speech voices already built into your browser/device (not something StageEgo creates) — different browsers and devices offer different voices, so the same character may sound different on your phone vs your laptop.
-                </li>
-                <li>
-                  <span className="font-semibold text-slate-200">Adjust pitch and speed</span> with the sliders to shape how that voice sounds — higher/lower pitch, faster/slower pace.
-                </li>
-                <li>
-                  <span className="font-semibold text-slate-200">Preview</span> to hear the current settings before saving.
-                </li>
-                <li>
-                  <span className="font-semibold text-slate-200">Optional: upload a sample clip.</span> If you have an audio clip of how the character should sound, upload it and StageEgo will suggest starting pitch/speed values based on it. This does NOT clone the voice — it only estimates and pre-fills the sliders above, which you can still adjust.
-                </li>
-                <li>
-                  <span className="font-semibold text-slate-200">Optional: export/import.</span> Export saves this voice's settings (not audio) as a small file, so you can reuse the same pitch/speed/voice choice on a different character later, or share it. Importing on another device matches to the closest available voice there, since exact voice names aren't guaranteed to exist on every browser.
-                </li>
-              </ol>
-
-              <p className="text-xs text-slate-500 border-t border-slate-700 pt-3">
-                None of this is required — a character works fine with no voice set at all, StageEgo just won't read their replies aloud.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {showVoiceStudioHelp && <HelpPopup topicId="voice-studio" onClose={() => setShowVoiceStudioHelp(false)} />}
 
       {/* Emotion-specific art help popup */}
-      {showEmotionSlotsHelp && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4" onClick={() => setShowEmotionSlotsHelp(false)}>
-          <div
-            className="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 pt-5 pb-3 border-b border-slate-700 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-teal-400">Emotion-specific art</h3>
-              <button onClick={() => setShowEmotionSlotsHelp(false)} className="text-slate-500 hover:text-slate-300">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-5 overflow-y-auto space-y-4 text-sm text-slate-300">
-              <p className="text-slate-400">
-                By default a character shows one portrait no matter what they're feeling. These slots let you add different art for different emotions (happy, sad, angry, and so on) — when the AI's reply reads as one of those emotions, that portrait shows instead. Every slot is optional; leave any of them blank and the base portrait is used for that emotion.
-              </p>
-
-              <div>
-                <p className="font-semibold text-slate-200 mb-1.5">Two ways to fill a slot:</p>
-                <ol className="list-decimal list-inside space-y-2">
-                  <li>
-                    <span className="font-semibold text-slate-200">Upload your own art</span> for that specific emotion — click any slot and choose an image.
-                  </li>
-                  <li>
-                    <span className="font-semibold text-slate-200">"✨ Fill gaps from base photo"</span> — a one-click option that generates a variant for every empty slot using your existing base photo. Important: this shifts color and tone (warmer, cooler, darker, more saturated) to suggest a mood — it does NOT redraw the face or change the expression. It's a quick placeholder, not a substitute for real emotion-specific art. It will never overwrite a slot you've filled yourself.
-                  </li>
-                </ol>
-              </div>
-
-              <p className="text-xs text-slate-500 border-t border-slate-700 pt-3">
-                You can mix both — some slots with your own uploaded art, others filled by the generator, and some left blank entirely.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {showEmotionSlotsHelp && <HelpPopup topicId="emotion-art" onClose={() => setShowEmotionSlotsHelp(false)} />}
 
       {/* Fork/immutability help popup */}
-      {showForkHelp && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4" onClick={() => setShowForkHelp(false)}>
-          <div
-            className="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-5 pt-5 pb-3 border-b border-slate-700 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-teal-400">Why fork instead of edit?</h3>
-              <button onClick={() => setShowForkHelp(false)} className="text-slate-500 hover:text-slate-300">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="p-5 overflow-y-auto space-y-3 text-sm text-slate-300">
-              <p>
-                Characters in StageEgo are locked once created — you can delete one, but you can't edit its core details (name, personality, behavior mode) afterward.
-              </p>
-              <p>
-                <span className="font-semibold text-slate-200">Forking</span> is how you make a changed version: it creates a brand-new character that starts from the original's details, which you can then adjust before saving. The original character is untouched and still exists separately.
-              </p>
-              <p>
-                <span className="font-semibold text-slate-200">"Paste what to carry over"</span> is optional — if you want the new fork to remember something specific from before (a quote, a fact, a moment), paste just that, not a full chat transcript. Leave it blank for a clean fork with no extra context.
-              </p>
-              <p className="text-xs text-slate-500 border-t border-slate-700 pt-3">
-                This keeps each character's identity stable and predictable over time, rather than quietly drifting after repeated small edits.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {showForkHelp && <HelpPopup topicId="fork-immutability" onClose={() => setShowForkHelp(false)} />}
     </div>
   );
 }
