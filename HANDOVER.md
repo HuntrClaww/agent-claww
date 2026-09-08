@@ -243,18 +243,24 @@ StageEgo already proves this exact pattern in `characterFetch.ts` (try source A 
 
 **No longer fully deferred — the zero-cost fallback tier above is being built now since it needs no scoping decision. AI-generation path and live mode remain deferred pending a dedicated scoping session.**
 
-### Phase 8.5 — Guided Assistant / Onboarding Helper ⏳ IN PROGRESS (started 2026-09-03, user-directed)
+### Phase 8.5 — Guided Assistant / Onboarding Helper ✅ COMPLETE 2026-09-03 (started same day, user-directed)
 **Goal (user's own framing):** help new/first-time users understand how to navigate a given setting or feature, beyond what the per-field help popups already cover in isolation.
 
-**Foundation already in place:** the four help popups built earlier this session (API Key, Voice Studio, Emotion-specific art, Fork/immutability — see the "Help-popup pattern" note above) are exactly the kind of content a guided assistant needs. Rather than writing new explanatory copy from scratch, the plan is to:
-1. **Extract the existing popup content into a shared, structured data source** (`helpContent.ts` — topic id, title, body) so it's reusable both by the existing per-field "?" buttons AND a new global help surface, instead of the same explanations existing twice.
-2. **Build a global Help Hub** — one entry point (not yet decided: floating button vs header icon) that lists all help topics, searchable, so a user can find guidance on ANY setting from one place rather than only stumbling onto the right "?" icon by chance.
-3. **First-time-user detection** — a subtler, more proactive layer on top of the Hub: detect a genuinely first-time user (no characters saved yet, no prior visit flag in localStorage) and surface something more actively guiding than a passive help icon — exact mechanism (banner? auto-opened tour? suggested first steps?) not yet decided, needs to stay unobtrusive and skippable.
-- [x] Design the topic data shape and migrate the 4 existing popups' content into it (still rendered from their current "?" buttons, just sourced from one shared place) — DONE 2026-09-03. `helpContent.ts` + `HelpPopup.tsx` built, all 4 bespoke popups (SettingsModal.tsx's API key, CharacterSelect.tsx's Voice Studio/Emotion-art/Fork) swapped over. ~180 lines of duplicated JSX removed; bundle size dropped accordingly, confirming genuine deduplication not just relocation.
-- [ ] Build the Help Hub UI (search + topic list + detail view)
-- [ ] Decide + build the entry point (where the Hub opens from)
-- [ ] Design first-time-user detection + what it actually surfaces (not yet decided — needs its own small scoping step, kept deliberately light so it doesn't turn into a heavy onboarding-wizard rebuild)
-- [ ] Additional topics beyond the 4 existing ones, once the Hub exists: Generic vs Personality mode (the core "flip the coin" concept), general navigation/what-is-this-app-for
+**What got built, in order:**
+1. `helpContent.ts` — shared data source (6 topics total: 4 migrated from the original bespoke popups + 2 new whole-app-orientation topics), plus `findHelpTopic()`/`searchHelpTopics()`.
+2. `HelpPopup.tsx` — generic component rendering any topic by id. All 4 original bespoke popups (SettingsModal's API key, CharacterSelect's Voice Studio/Emotion-art/Fork) swapped to use it. ~180 lines of duplicated JSX removed; bundle size dropped accordingly, confirming genuine deduplication not just relocation.
+3. `HelpHub.tsx` — searchable modal listing every topic, opens individual topics via the same `HelpPopup`. One rendering, two entry points (per-field "?" or the Hub).
+4. Entry point: "?" icon in `Sidebar.tsx`'s top bar, next to the Settings gear — reachable from anywhere in the app once a session is active.
+5. Two new topics added specifically for the Hub (not tied to any single field): "Getting started — Generic vs Personality Mode" (the core two-sided-coin concept) and "Finding your way around" (a map of where things live).
+6. First-time-user detection — `CharacterSelect.tsx`: detects no saved characters + no `stageego_visited` localStorage flag, shows a small dismissible teal banner pointing to the Help icon, sets the flag as soon as the decision to show is made (so it's a true one-time nudge even if the user never touches it). Deliberately just a banner, not a modal or forced tour, per the "unobtrusive and skippable" requirement.
+
+**Result:** adding topic #7 onward going forward is just one array entry in `helpContent.ts` — no new component code needed for either the per-field popups or the Hub.
+
+- [x] Topic data shape + migrate 4 existing popups
+- [x] Help Hub UI (search + topic list, detail view via shared HelpPopup)
+- [x] Entry point decided + built (Sidebar "?" icon)
+- [x] First-time-user detection (dismissible banner, one-time via localStorage flag)
+- [x] Additional topics: Generic vs Personality mode, general navigation
 
 
 ### Phase 9 — Backend / Data Sovereignty ⏳ DEFERRED
