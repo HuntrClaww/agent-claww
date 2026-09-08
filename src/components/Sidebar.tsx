@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import UserProfileModal from './UserProfileModal';
-import { X } from 'lucide-react';
+import { X, HelpCircle } from 'lucide-react';
 
 interface SidebarProps {
   isGuest: boolean;
   isOpen: boolean;
   onCloseMobile: () => void;
   onOpenSettings: () => void;
+  onOpenHelp: () => void;
   onNewChat: () => void;
 }
 
-export default function Sidebar({ isGuest, isOpen, onCloseMobile, onOpenSettings, onNewChat }: SidebarProps) {
+export default function Sidebar({ isGuest, isOpen, onCloseMobile, onOpenSettings, onOpenHelp, onNewChat }: SidebarProps) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [userName, setUserName] = useState('Guest User');
   const [userAvatar, setUserAvatar] = useState('');
@@ -47,6 +48,13 @@ export default function Sidebar({ isGuest, isOpen, onCloseMobile, onOpenSettings
               <span>🎭</span> Sessions
             </h2>
             <div className="flex items-center gap-2">
+              <button
+                onClick={onOpenHelp}
+                className="text-slate-400 hover:text-teal-400 transition-colors"
+                title="Help"
+              >
+                <HelpCircle size={16} />
+              </button>
               <button
                 onClick={onOpenSettings}
                 className="text-slate-400 hover:text-teal-400 transition-colors"

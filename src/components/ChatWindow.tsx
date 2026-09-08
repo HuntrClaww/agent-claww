@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import SettingsModal from './SettingsModal';
+import HelpHub from './HelpHub';
 import CharacterSelect from './CharacterSelect';
 import CharacterPortrait from './CharacterPortrait';
 import Sidebar from './Sidebar';
@@ -59,6 +60,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   const [isTyping, setIsTyping] = useState(false);
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<ActiveMode | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -460,6 +462,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
         isOpen={isSidebarOpen}
         onCloseMobile={() => setIsSidebarOpen(false)}
         onOpenSettings={() => setIsSettingsOpen(true)} 
+        onOpenHelp={() => setIsHelpOpen(true)}
         onNewChat={handleNewChat}
       />
 
@@ -695,6 +698,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       </div>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <HelpHub isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
     </div>
   );
 }
