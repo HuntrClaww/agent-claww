@@ -77,6 +77,33 @@ export const HELP_TOPICS: HelpTopic[] = [
     note: "This keeps each character's identity stable and predictable over time, rather than quietly drifting after repeated small edits.",
     keywords: ['fork', 'edit', 'immutable', 'character', 'delete', 'change'],
   },
+  {
+    id: 'getting-started',
+    title: 'Getting started — Generic vs Personality Mode',
+    intro:
+      "StageEgo works like two sides of the same coin. When you start a session, you choose one of two modes — you can always leave and flip the coin again later.",
+    steps: [
+      "Generic Mode (Side A): a general-purpose chat where you can ask about any character or ask the AI to become one on the spot, without saving anything. Good for quick, one-off conversations.",
+      "Personality Mode (Side B): create and save a specific character with their own name, personality, voice, and art, then chat with just them. This is where Voice Studio, emotion-specific art, and forking all live.",
+      "Behavior mode (only in Personality Mode): choose Lore-Locked (the character sticks strictly to canon/established facts about them) or Open-World (more creative freedom in how they respond).",
+    ],
+    note: "Neither mode is 'better' — Generic is for browsing/exploring, Personality is for building a character you'll come back to.",
+    keywords: ['generic', 'personality', 'mode', 'getting started', 'coin', 'side a', 'side b', 'behavior', 'lore-locked', 'open-world'],
+  },
+  {
+    id: 'navigation',
+    title: 'Finding your way around',
+    intro:
+      "A quick map of where things live, if you're not sure where to look.",
+    steps: [
+      "Sidebar (left): switch or start a new session, open Settings (⚙️) or this Help (?) from the top bar.",
+      "Settings > Standard Assistant: set your AI provider's API key (needed for chat to work at all) — see the 'Getting an API key' topic for how.",
+      "Settings > Character Management: see/delete your saved characters from one place.",
+      "Character creation screen (Personality Mode, Side B): name, portrait, Voice Studio, emotion-specific art, and behavior mode are all set up here before a character is saved.",
+      "Once in a chat: the mic and speaker icons (if your browser supports them) let you talk to and hear the character; the message box supports **bold** and *action text* formatting.",
+    ],
+    keywords: ['navigation', 'where', 'find', 'sidebar', 'menu', 'layout', 'how does this work'],
+  },
 ];
 
 export function findHelpTopic(id: string): HelpTopic | undefined {
