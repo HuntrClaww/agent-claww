@@ -4,6 +4,7 @@ import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { createCharacter, listCharacters, deleteCharacter, PORTRAIT_MAX_KB, EMOTION_PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode, type VoiceSettings } from '../lib/characterStore';
 import { compressPortrait } from '../lib/imageCompress';
 import { generateAllEmotionVariants } from '../lib/avatarFilters';
+import { generateAvatar } from '../lib/avatarGenerate';
 import { getAvailableVoices, speak, isVoiceSupported, downloadVoicePackage, parseVoicePackage } from '../lib/voiceEngine';
 import { analyzeVoiceSample, type VoiceAnalysisResult } from '../lib/voiceAnalysis';
 import { EMOTION_EMOJI, type Emotion } from '../lib/emotionDetect';
@@ -152,16 +153,39 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
     setEmotionPortraits(prev => ({ ...prev, [emotion]: dataUrl }));
   };
 
-  // Phase 8 zero-cost fallback tier: one-click generated variants from
-  // the base portrait via canvas color filters. Never overwrites a
-  // slot the user has already manually uploaded - generated variants
-  // only fill in gaps.
+  // Phase 8 fallback tier: fills empty emotion slots from the base
+  // portrait. Uses generateAvatar() orchestrator per-emotion when the
+  // user has an API key configured (tries Gemini, falls back to
+  // canvas-filter internally per slot); with no key configured, skips
+  // straight to the fast bulk canvas-filter path (generateAllEmotionVariants)
+  // instead of making N doomed network calls. Never overwrites a slot
+  // the user has already manually uploaded - generated variants only
+  // fill in gaps.
   const [generatingVariants, setGeneratingVariants] = useState(false);
   const handleGenerateVariants = async () => {
     if (!portraitDataUrl) return;
     setGeneratingVariants(true);
     try {
-      const variants = await generateAllEmotionVariants(portraitDataUrl);
+      const apiKey = localStorage.getItem('user_api_key') || '';
+
+      if (!apiKey.trim()) {
+        const variants = await generateAllEmotionVariants(portraitDataUrl);
+        setEmotionPortraits(prev => ({ ...variants, ...prev }));
+        return;
+      }
+
+      const results = await Promise.all(
+        OPTIONAL_EMOTION_SLOTS.map(async emotion => {
+          const prompt = `Redraw this portrait with a ${emotion} facial expression, same character, same art style.`;
+          const result = await generateAvatar(portraitDataUrl, prompt, apiKey, emotion);
+          return [emotion, result?.dataUrl] as const;
+        })
+      );
+
+      const variants: Partial<Record<Emotion, string>> = {};
+      for (const [emotion, dataUrl] of results) {
+        if (dataUrl) variants[emotion] = dataUrl;
+      }
       setEmotionPortraits(prev => ({ ...variants, ...prev }));
     } finally {
       setGeneratingVariants(false);
@@ -438,7 +462,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                 <button
                   onClick={handleGenerateVariants}
                   disabled={generatingVariants}
-                  title="Fills empty slots with tinted variants of your base photo — a quick color/mood shift, not a redrawn expression. Won't overwrite anything you've already uploaded."
+                  title="Fills empty slots. If you've got an API key configured, tries AI-redrawn expressions first (Gemini); otherwise falls back to a quick tinted color/mood shift of your base photo. Won't overwrite anything you've already uploaded."
                   className="ml-3 text-xs text-teal-400 hover:text-teal-300 transition-colors disabled:opacity-50 disabled:cursor-wait"
                 >
                   {generatingVariants ? 'Generating…' : '✨ Fill gaps from base photo'}
