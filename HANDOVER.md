@@ -282,7 +282,11 @@ StageEgo already proves this exact pattern in `characterFetch.ts` (try source A 
 - [ ] Service Worker / PWA: cache framework files on first visit, zero-network subsequent launches
 - [ ] Target: app usable in under 2 seconds even on slow connections
 
-### Phase 11 — Offline Architecture ⏳ EXPLICITLY DEFERRED — DO NOT START YET
+### Phase 11 — Offline Architecture ❌ CUT FROM STAGEEGO SCOPE (2026-09-08)
+**This phase is no longer part of StageEgo's roadmap.** The offline/native-mobile direction this phase was scoping is already being built properly as a separate, dedicated project (ChatBuddy — an offline-first Android companion app with its own 11-phase plan and its own atomic task registry), rather than bolted onto this web app after the fact. Do not resurrect this phase here; if offline/mobile work is needed for StageEgo specifically in the future, it should be re-scoped fresh rather than picking this list back up, since it was written before that separation was made.
+<details>
+<summary>Original phase content (kept for historical reference only)</summary>
+
 - [ ] Do not begin until the web app is fully stable and feature-complete online
 - [ ] WebLLM / Transformers.js via WebGPU for local LLM inference
 - [ ] On-device Whisper (Tiny/Base) via WASM for speech recognition without cloud STT
@@ -295,6 +299,8 @@ StageEgo already proves this exact pattern in `characterFetch.ts` (try source A 
 - [ ] Arthur's personal account: full offline autonomy with personalized session data
 - [ ] Accent/slang normalization pipeline: Trie-based preprocessing before LLM input
 - [ ] Emoji/symbol semantic mapping: 💀 = amused_exaggeration, etc.
+
+</details>
 
 ---
 
