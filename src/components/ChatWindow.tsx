@@ -8,18 +8,13 @@ import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX, M
 import { APIClient, detectAPIProvider } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
+import { loadThread, saveThread, personalityThreadKey, GENERIC_THREAD_KEY, type Message } from '../lib/chatLogStore';
 import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
 import { speakExpressive, stopSpeaking, isVoiceSupported, isMicSupported, startListening, stopListening, primeSpeechIfNeeded, checkMicSignalQuality, listAudioInputDevices, watchAudioInputDevices, isLikelyExternalAudioDevice } from '../lib/voiceEngine';
 import { flagUnusualTokens, extractKnownProperNouns } from '../lib/wordFlagging';
 
-// Define what a single message looks like
-interface Message {
-  id: string;
-  role: 'user' | 'ai';
-  content: string;
-  citation?: string; // e.g. "via Fandom" - shown when character info was fetched
-  emotion?: Emotion; // detected emotion for this AI message
-}
+// Message shape now lives in chatLogStore.ts (imported above) so the
+// persistence layer and the UI share one definition.
 
 // Parses the mode string coming out of CharacterSelect:
 //   'generic'                                            -> Generic Mode
@@ -63,6 +58,31 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [activeMode, setActiveMode] = useState<ActiveMode | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Phase 10: which persisted thread the current messages belong to.
+  // Generic Mode has one shared thread; Personality Mode has one per
+  // character (falls back to null - no persistence - for a character
+  // with no id, which shouldn't normally happen but keeps this safe).
+  const threadKey = activeMode?.kind === 'generic'
+    ? GENERIC_THREAD_KEY
+    : activeMode?.kind === 'personality' && activeMode.characterId
+      ? personalityThreadKey(activeMode.characterId)
+      : null;
+
+  // Guards the save-effect below from firing on the render where
+  // messages were just populated FROM storage (loading a thread sets
+  // messages, which would otherwise immediately re-trigger a save of
+  // the exact same data it just loaded — harmless but wasteful).
+  const skipNextSaveRef = useRef(false);
+
+  useEffect(() => {
+    if (!threadKey) return;
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+    saveThread(threadKey, messages);
+  }, [messages, threadKey]);
 
   // Generic Mode only: which character the AI is currently embodying
   const [genericCharacter, setGenericCharacter] = useState<string | null>(null);
@@ -519,15 +539,31 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
         {!activeMode ? (
           <CharacterSelect onSelect={(mode) => {
             const parsed = parseMode(mode);
+            const key = parsed.kind === 'generic'
+              ? GENERIC_THREAD_KEY
+              : parsed.characterId
+                ? personalityThreadKey(parsed.characterId)
+                : null;
+            const existing = key ? loadThread(key) : [];
+
             setActiveMode(parsed);
-            const greeting = parsed.kind === 'generic'
-              ? "You're in **Generic Mode**. Ask me about any character, or tell me who to become."
-              : `**${parsed.characterName}** is locked in, running **${parsed.behavior === 'true-to-character' ? 'Lore-Locked' : 'Open-World'}**. Say hello.`;
-            setMessages([{
-              id: Date.now().toString(),
-              role: 'ai',
-              content: greeting,
-            }]);
+
+            if (existing.length > 0) {
+              // Restoring a saved conversation — skip the save-effect
+              // for this render since we're loading FROM storage, not
+              // producing new data to write back.
+              skipNextSaveRef.current = true;
+              setMessages(existing);
+            } else {
+              const greeting = parsed.kind === 'generic'
+                ? "You're in **Generic Mode**. Ask me about any character, or tell me who to become."
+                : `**${parsed.characterName}** is locked in, running **${parsed.behavior === 'true-to-character' ? 'Lore-Locked' : 'Open-World'}**. Say hello.`;
+              setMessages([{
+                id: Date.now().toString(),
+                role: 'ai',
+                content: greeting,
+              }]);
+            }
           }} />
         ) : (
           <div className="flex-1 flex overflow-hidden">
