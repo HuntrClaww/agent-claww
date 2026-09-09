@@ -272,7 +272,7 @@ StageEgo already proves this exact pattern in `characterFetch.ts` (try source A 
 - [ ] Requires full Supabase auth flow to be working first — do not start before that
 
 ### Phase 10 — Performance & Loading Optimization ⏳ DEFERRED
-- [ ] App shell first (lightweight HTML/CSS frame, <1s render)
+- [x] App shell first (lightweight HTML/CSS frame, <1s render) — DONE 2026-09-08. `index.html`: inline critical CSS + static shell (spinner + "StageEgo" title) matching the dark theme, painted before any JS loads/executes. `App.tsx`: adds `app-ready` class to `<body>` on mount so the shell fades out via CSS transition instead of hard-cutting to the real UI, then removes the shell node from the DOM afterward.
 - [ ] Cached local data second (characters, API keys, chat logs from localStorage/IndexedDB)
 - [ ] SSE text streaming third (character-by-character response streaming)
 - [ ] Heavy media lazy-loaded last (portraits, audio) — never blocks text chat
