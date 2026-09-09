@@ -9,9 +9,52 @@
     <meta name="theme-color" content="#0f172a" />
     <meta name="keywords" content="AI coach, performance feedback, presentation skills, acting coach, public speaking, scene analysis" />
     <title>StageEgo - Your AI Performance Coach</title>
+    <style>
+        /* Phase 10: critical inline CSS for the pre-React app shell.
+           Kept deliberately tiny and self-contained (no external
+           stylesheet dependency) so it can paint before any JS,
+           including the main bundle, has loaded or executed. Mirrors
+           the dark theme (#0f172a) so there's no flash-of-wrong-color
+           when the real app mounts on top of it. */
+        html, body { background: #0f172a; margin: 0; height: 100%; }
+        #app-shell {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background: #0f172a;
+            color: #fbbf24;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        #app-shell .shell-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            opacity: 0.9;
+        }
+        #app-shell .shell-spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid rgba(251, 191, 36, 0.25);
+            border-top-color: #fbbf24;
+            border-radius: 50%;
+            animation: shell-spin 0.8s linear infinite;
+        }
+        @keyframes shell-spin { to { transform: rotate(360deg); } }
+        /* Once React mounts, App.tsx adds this class to <body> so the
+           shell fades out instead of hard-cutting to the real UI. */
+        body.app-ready #app-shell { opacity: 0; pointer-events: none; transition: opacity 0.2s ease-out; }
+    </style>
 </head>
 
 <body>
+    <div id="app-shell" aria-hidden="true">
+        <div class="shell-spinner"></div>
+        <div class="shell-title">StageEgo</div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 </body>

@@ -5,6 +5,18 @@ import ChatWindow from './components/ChatWindow';
 function App() {
   const [sessionState, setSessionState] = useState<'loggedOut' | 'guest' | 'loggedIn'>('loggedOut');
 
+  // Phase 10: signal that React has mounted so the static pre-React
+  // shell (index.html) fades out instead of hard-cutting to the real
+  // UI. Removes the shell node afterward rather than just hiding it,
+  // so it doesn't sit inert in the DOM for the rest of the session.
+  useEffect(() => {
+    document.body.classList.add('app-ready');
+    const shell = document.getElementById('app-shell');
+    if (!shell) return;
+    const timer = setTimeout(() => shell.remove(), 250);
+    return () => clearTimeout(timer);
+  }, []);
+
   // --- THEME LOGIC ADDITION ---
   useEffect(() => {
     // Set page title for StageEgo
