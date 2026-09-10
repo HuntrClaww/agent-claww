@@ -75,7 +75,22 @@ function readAll(): SavedCharacter[] {
 }
 
 function writeAll(characters: SavedCharacter[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(characters));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(characters));
+  } catch (err) {
+    // Most likely QuotaExceededError (localStorage full). Previously
+    // unguarded - this threw the browser's raw, unfriendly exception
+    // straight out of createCharacter()/deleteCharacter() etc. Now
+    // re-thrown as a clear message, matching this module's existing
+    // convention (see createCharacter's size-limit checks above) of
+    // throwing descriptive Errors for the UI to catch and display,
+    // rather than failing silently.
+    throw new Error(
+      err instanceof DOMException && err.name === 'QuotaExceededError'
+        ? 'Storage is full — try removing an old character or a large portrait to free up space.'
+        : `Failed to save character data: ${err instanceof Error ? err.message : 'Unknown error'}`
+    );
+  }
   window.dispatchEvent(new Event('charactersUpdated'));
 }
 

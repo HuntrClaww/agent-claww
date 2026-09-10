@@ -34,12 +34,27 @@ export default function UserProfileModal({ isOpen, onClose }: { isOpen: boolean;
   };
 
   const handleSave = () => {
-    const trimmed = displayName.trim();
-    if (trimmed) localStorage.setItem('user_display_name', trimmed);
-    else localStorage.removeItem('user_display_name');
+    try {
+      const trimmed = displayName.trim();
+      if (trimmed) localStorage.setItem('user_display_name', trimmed);
+      else localStorage.removeItem('user_display_name');
 
-    if (avatarDataUrl) localStorage.setItem('user_avatar_url', avatarDataUrl);
-    else localStorage.removeItem('user_avatar_url');
+      if (avatarDataUrl) localStorage.setItem('user_avatar_url', avatarDataUrl);
+      else localStorage.removeItem('user_avatar_url');
+    } catch (err) {
+      // Most likely QuotaExceededError (localStorage full, e.g. from
+      // several character portraits) — previously unguarded, which
+      // threw the browser's raw exception straight out of this
+      // handler with no feedback to the user at all. Surfaced via
+      // the same avatarError banner already used for compression
+      // failures, rather than a silent no-op or an uncaught throw.
+      setAvatarError(
+        err instanceof DOMException && err.name === 'QuotaExceededError'
+          ? 'Storage is full — try removing an old character to free up space, then save again.'
+          : 'Failed to save profile — please try again.'
+      );
+      return;
+    }
 
     window.dispatchEvent(new Event('profileUpdated'));
     onClose();
