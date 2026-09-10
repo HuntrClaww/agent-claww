@@ -130,11 +130,16 @@ README.md
 - [x] Character bio never sent to API in Personality Mode (fixed)
 - [x] Fork seed context stored but never sent to API (fixed)
 - [x] Portrait always showed default image (fixed — now calls resolvePortraitForEmotion)
-- [ ] Profanity tolerance setting is decorative — not wired into buildSystemPrompt
-- [ ] Fandom fetch endpoint unverified — CORS may silently fail
-- [ ] No image compression on upload — large files flatly rejected instead of auto-compressed
-- [ ] Generic Mode character history is stateless — switching back to a previous character loses all context
-- [ ] UserProfileModal.tsx never reviewed — unknown scope
+- [x] Profanity tolerance setting is decorative — **re-checked 2026-09-10, already correctly wired** (`apiClient.ts`'s `buildSystemPrompt()` reads `profanity_filter` from localStorage and appends a language instruction for 'strict'/'off'). Checkbox was just stale — no code change needed.
+- [ ] Fandom fetch endpoint unverified — CORS may silently fail. **Still genuinely open** — needs a live network test this sandbox can't do; not something to fix blind.
+- [x] No image compression on upload — **re-checked 2026-09-10, already correctly wired** (`CharacterSelect.tsx` calls `compressPortrait()` for both the default portrait and per-emotion slots). Checkbox was just stale — no code change needed.
+- [x] Generic Mode character history is stateless — **resolved as a side effect of the 2026-09-08 conversation-memory fix** (Phase 10 additions): Generic Mode's full message thread is now sent as `history` to the API regardless of which character was being embodied at the time, so switching back to a previously-embodied character does retain that context now.
+- [x] UserProfileModal.tsx never reviewed — **reviewed 2026-09-10** as part of a cross-phase audit. Found and fixed one real bug: `handleSave()` called `localStorage.setItem` unguarded (quota errors on a full localStorage — e.g. several character portraits already stored — would throw uncaught with no user feedback). Now caught and surfaced via the existing `avatarError` banner.
+
+**Additional bugs found during the 2026-09-10 cross-phase audit** (Phases 1-6, 6.5, 8, 8.5, 10 reviewed for problems, at user's request):
+- [x] `characterStore.ts`'s `writeAll()` had the same unguarded `localStorage.setItem` quota-error gap as the UserProfileModal one above — same fix pattern applied (catches and re-throws a clear message, matching this module's existing throw-Error convention for validation errors).
+- [x] All 6 `!response.ok` branches in `apiClient.ts` (3 streaming + 3 non-streaming provider methods) called `response.json()` directly on error bodies — a non-JSON error body (proxy/gateway timeout page, CORS failure, empty body) would throw an unhandled parse error instead of showing a clean message. Fixed with a shared `parseErrorMessage()` helper that reads the body as text first and never throws.
+- Reviewed for the same class of issue and found clean: all `addEventListener` calls have matching `removeEventListener` cleanup (no listener leaks); the abort-controller/streaming lifecycle in `ChatWindow.tsx` is correctly scoped (new sends are blocked via `isStreaming` while a stream is in flight, so no overlapping-stream race is possible); `voiceEngine.ts`'s only other `JSON.parse` call (voice package import) was already properly guarded.
 
 ### Phase 6 — Voice & Audio System 🔄 IN PROGRESS
 **Free-tier research completed 2026-09-02** (hard constraint: no payment method entry, ever — free signup + API key only):
