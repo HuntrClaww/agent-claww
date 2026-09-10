@@ -16,6 +16,20 @@ export interface APIResponse {
 }
 
 /**
+ * Gives a 429 response a clearer, actionable message than the
+ * provider's raw error body - "you've sent requests too fast, wait a
+ * moment" is a very different situation from a generic API error and
+ * the UI should be able to tell the person that plainly rather than
+ * showing whatever JSON error shape that provider happens to return
+ * for a rate limit (which varies a lot provider-to-provider).
+ */
+function isRateLimited(status: number): boolean {
+  return status === 429;
+}
+
+const RATE_LIMIT_MESSAGE = "You're sending messages faster than this API key's rate limit allows. Wait a few seconds and try again.";
+
+/**
  * Parses a fetch Response body as Server-Sent Events, yielding each
  * event's raw `data:` payload as a string. Shared across all three
  * providers below since they all speak SSE, even though the JSON
@@ -171,7 +185,9 @@ export class APIClient {
       const errorData = await response.json();
       return {
         success: false,
-        error: `Anthropic API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
+        error: isRateLimited(response.status)
+          ? RATE_LIMIT_MESSAGE
+          : `Anthropic API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
         provider: 'anthropic',
       };
     }
@@ -230,7 +246,9 @@ export class APIClient {
       const errorData = await response.json();
       return {
         success: false,
-        error: `OpenAI API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
+        error: isRateLimited(response.status)
+          ? RATE_LIMIT_MESSAGE
+          : `OpenAI API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
         provider: 'openai',
       };
     }
@@ -283,7 +301,9 @@ export class APIClient {
       const errorData = await response.json();
       return {
         success: false,
-        error: `Google Gemini API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
+        error: isRateLimited(response.status)
+          ? RATE_LIMIT_MESSAGE
+          : `Google Gemini API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
         provider: 'gemini',
       };
     }

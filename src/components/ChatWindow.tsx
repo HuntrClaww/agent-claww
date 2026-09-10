@@ -10,6 +10,7 @@ import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
 import { loadThread, saveThread, personalityThreadKey, GENERIC_THREAD_KEY, type Message } from '../lib/chatLogStore';
 import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
+import { estimateTokens, classifyBudget, SESSION_TOKEN_STOP } from '../lib/sessionBudget';
 import { speakExpressive, stopSpeaking, isVoiceSupported, isMicSupported, startListening, stopListening, primeSpeechIfNeeded, checkMicSignalQuality, listAudioInputDevices, watchAudioInputDevices, isLikelyExternalAudioDevice } from '../lib/voiceEngine';
 import { flagUnusualTokens, extractKnownProperNouns } from '../lib/wordFlagging';
 
@@ -59,6 +60,11 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   // sending a new message, since text keeps arriving well after the
   // dots have been replaced by the growing message bubble.
   const [isStreaming, setIsStreaming] = useState(false);
+
+  // Client-side heuristic token budget for THIS session (see
+  // sessionBudget.ts for why this is an estimate, not real provider
+  // accounting). Resets on New Chat, same as the rest of session state.
+  const [sessionTokenEstimate, setSessionTokenEstimate] = useState(0);
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -292,6 +298,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     }
     setIsTyping(false);
     setIsStreaming(false);
+    setSessionTokenEstimate(0);
     setActiveMode(null);
     setGenericCharacter(null);
     genericCharacterCache.current.clear();
@@ -308,6 +315,17 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   // Handle sending a message
   const handleSend = async () => {
     if (!inputText.trim() || isStreaming) return;
+
+    // Client-side budget safety net: block sending once this session's
+    // estimated token usage crosses the hard-stop threshold, rather
+    // than silently letting the conversation keep growing (and
+    // burning credits / risking a rate-limit) indefinitely. The user
+    // can start a New Chat to reset and continue.
+    if (classifyBudget(sessionTokenEstimate) === 'stop') {
+      setApiStatus('error');
+      setApiMessage(`This conversation has used roughly ${Math.round(sessionTokenEstimate / 1000)}k tokens — pausing here to avoid burning through your API credits/rate limit unexpectedly. Start a New Chat to continue.`);
+      return;
+    }
 
     // Unlock speech synthesis on iOS Safari while we're still in the
     // synchronous portion of this click handler — must happen before
@@ -409,6 +427,20 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     }
     setIsTyping(false);
     setIsStreaming(false);
+
+    // Update this session's budget estimate (prompt + system/character
+    // context + the response itself) and surface a heads-up once the
+    // warning threshold is crossed - purely informational, sending
+    // still works until the hard-stop threshold (checked at the top
+    // of handleSend on the NEXT message).
+    const turnTokens = estimateTokens(prompt) + estimateTokens(extraContext ?? '') + estimateTokens(aiResponse);
+    setSessionTokenEstimate(prev => {
+      const next = prev + turnTokens;
+      if (classifyBudget(next) === 'warning' && classifyBudget(prev) === 'ok') {
+        setApiMessage(`Heads up: this conversation has used roughly ${Math.round(next / 1000)}k tokens. It'll pause automatically around ${Math.round(SESSION_TOKEN_STOP / 1000)}k to help protect your API credits/rate limit — start a New Chat anytime to reset.`);
+      }
+      return next;
+    });
 
     // Voice Mode: speak the response aloud with emotion-aware pacing.
     // Personality Mode characters may have their own voiceSettings saved;
