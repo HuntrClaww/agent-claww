@@ -53,6 +53,12 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  // Phase 10: isTyping now only controls the bouncing-dots indicator
+  // (shown while waiting for the FIRST token); isStreaming covers the
+  // whole request/response lifecycle and is what actually gates
+  // sending a new message, since text keeps arriving well after the
+  // dots have been replaced by the growing message bubble.
+  const [isStreaming, setIsStreaming] = useState(false);
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
@@ -81,7 +87,16 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       skipNextSaveRef.current = false;
       return;
     }
-    saveThread(threadKey, messages);
+    // Debounced: streaming (Phase 10) updates `messages` on every
+    // token delta, which would otherwise fire a localStorage write
+    // per token. Collapsing to one save ~400ms after activity settles
+    // keeps persistence correct (still saves the final state) without
+    // hammering localStorage mid-stream. A save that's mid-flight when
+    // the component unmounts/thread changes is intentionally dropped -
+    // acceptable for a prototype's "don't lose the whole conversation
+    // on refresh" goal, not a guarantee of zero data loss on every edit.
+    const timer = setTimeout(() => saveThread(threadKey, messages), 400);
+    return () => clearTimeout(timer);
   }, [messages, threadKey]);
 
   // Generic Mode only: which character the AI is currently embodying
@@ -222,8 +237,17 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     return () => window.removeEventListener('profileUpdated', initializeAPI);
   }, []);
 
-  // Send real API request
-  const sendAPIRequest = async (userText: string, character: string, extraContext?: string): Promise<string> => {
+  // Send real API request. Streams via onDelta as tokens arrive
+  // (Phase 10: character-by-character rendering) and resolves with
+  // the FULL final text once the stream ends, same contract as
+  // before - callers that don't care about incremental updates can
+  // pass a no-op onDelta and use the return value exactly as before.
+  const sendAPIRequest = async (
+    userText: string,
+    character: string,
+    extraContext: string | undefined,
+    onDelta: (chunk: string) => void
+  ): Promise<string> => {
     if (!apiClient) {
       setApiStatus('error');
       setApiMessage('No API configured. Add one in Settings.');
@@ -235,7 +259,13 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
     try {
       abortControllerRef.current = new AbortController();
-      const response = await apiClient.sendMessage(userText, character, extraContext);
+      const response = await apiClient.sendMessageStream(
+        userText,
+        character,
+        extraContext,
+        onDelta,
+        abortControllerRef.current.signal
+      );
 
       if (response.success && response.content) {
         setApiStatus('success');
@@ -261,6 +291,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       abortControllerRef.current.abort();
     }
     setIsTyping(false);
+    setIsStreaming(false);
     setActiveMode(null);
     setGenericCharacter(null);
     genericCharacterCache.current.clear();
@@ -276,7 +307,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
   // Handle sending a message
   const handleSend = async () => {
-    if (!inputText.trim() || isTyping) return;
+    if (!inputText.trim() || isStreaming) return;
 
     // Unlock speech synthesis on iOS Safari while we're still in the
     // synchronous portion of this click handler — must happen before
@@ -290,6 +321,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     setMessages(prev => [...prev, newUserMsg]);
     setInputText('');
     setIsTyping(true);
+    setIsStreaming(true);
 
     // 2. In Generic Mode, detect "be X" / "become X" and fetch character info
     let character = activeMode?.kind === 'personality'
@@ -340,21 +372,43 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       extraContext = [bio, seed, EMOTION_TAG_INSTRUCTION].filter(Boolean).join('\n\n');
     }
 
-    // 3. Send to real API
-    const aiResponse = await sendAPIRequest(prompt, character, extraContext);
-    const { cleanedText, emotion } = parseEmotion(aiResponse);
-    const newAiMsg: Message = {
-      id: (Date.now() + 1).toString(),
-      role: 'ai',
-      content: cleanedText,
-      citation,
-      emotion,
+    // 3. Send to real API, streaming tokens into a placeholder message
+    // as they arrive. The placeholder is only added to `messages` on
+    // the FIRST delta (not before) so the bouncing-dots indicator
+    // covers the initial network wait, then hands off cleanly to the
+    // growing text bubble instead of both showing at once.
+    const aiMsgId = (Date.now() + 1).toString();
+    let accumulated = '';
+    let placeholderAdded = false;
+
+    const handleDelta = (chunk: string) => {
+      accumulated += chunk;
+      const { cleanedText } = parseEmotion(accumulated);
+      if (!placeholderAdded) {
+        placeholderAdded = true;
+        setIsTyping(false);
+        setMessages(prev => [...prev, { id: aiMsgId, role: 'ai', content: cleanedText, citation }]);
+      } else {
+        setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: cleanedText } : m));
+      }
     };
-    setMessages(prev => [...prev, newAiMsg]);
+
+    const aiResponse = await sendAPIRequest(prompt, character, extraContext, handleDelta);
+    const { cleanedText, emotion } = parseEmotion(aiResponse);
+
+    if (!placeholderAdded) {
+      // No deltas ever arrived (e.g. an error before any streaming
+      // started) — add the final message now instead of leaving
+      // nothing on screen.
+      setMessages(prev => [...prev, { id: aiMsgId, role: 'ai', content: cleanedText, citation, emotion }]);
+    } else {
+      setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: cleanedText, emotion } : m));
+    }
     if (activeMode?.kind === 'personality') {
       setCurrentEmotion(emotion);
     }
     setIsTyping(false);
+    setIsStreaming(false);
 
     // Voice Mode: speak the response aloud with emotion-aware pacing.
     // Personality Mode characters may have their own voiceSettings saved;
@@ -371,7 +425,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
   // Allow sending with the Enter key (respecting the same guards as the button)
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && inputText.trim() && !isTyping) {
+    if (e.key === 'Enter' && inputText.trim() && !isStreaming) {
       handleSend();
     }
   };
@@ -701,7 +755,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                   {isMicSupported() && (
                     <button
                       onClick={toggleMic}
-                      disabled={isTyping}
+                      disabled={isStreaming}
                       title={isListening ? 'Stop listening' : 'Speak your message'}
                       className={`px-3.5 py-3 rounded-xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
                         isListening
@@ -714,7 +768,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                   )}
                   <button
                     onClick={handleSend}
-                    disabled={!inputText.trim() || isTyping}
+                    disabled={!inputText.trim() || isStreaming}
                     style={activeThemeColor ? { background: activeThemeColor } : undefined}
                     className={`${activeThemeColor ? '' : 'bg-gradient-to-br from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600'} disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium transition-all shadow-md hover:shadow-lg active:shadow-sm disabled:hover:shadow-md`}
                   >

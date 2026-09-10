@@ -15,6 +15,44 @@ export interface APIResponse {
   provider?: string;
 }
 
+/**
+ * Parses a fetch Response body as Server-Sent Events, yielding each
+ * event's raw `data:` payload as a string. Shared across all three
+ * providers below since they all speak SSE, even though the JSON
+ * shape inside each payload differs per-provider.
+ *
+ * Buffers across chunk boundaries (a `data: {...}` line can arrive
+ * split across two network reads) by only emitting complete
+ * newline-terminated lines and holding the remainder for the next
+ * read - so a truncated line is never yielded as-is.
+ */
+async function* parseSSELines(response: Response): AsyncGenerator<string> {
+  if (!response.body) return;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? ''; // last element may be an incomplete line
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('data:')) {
+          yield trimmed.slice(5).trim();
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export class APIClient {
   private config: APIConfig;
 
@@ -51,6 +89,224 @@ export class APIClient {
         provider: this.config.provider,
       };
     }
+  }
+
+  /**
+   * Streaming counterpart to sendMessage(): calls onDelta(chunk) as
+   * text arrives instead of waiting for the full response, then
+   * resolves with the same APIResponse shape once the stream ends
+   * (content holds the FULL accumulated text, same as sendMessage
+   * would have returned). Callers that don't need streaming should
+   * keep using sendMessage() - this exists for the chat UI's
+   * character-by-character rendering specifically.
+   */
+  async sendMessageStream(
+    userMessage: string,
+    character: string,
+    extraContext: string | undefined,
+    onDelta: (chunk: string) => void,
+    signal?: AbortSignal
+  ): Promise<APIResponse> {
+    if (!this.config.apiKey || !this.config.apiKey.trim()) {
+      return {
+        success: false,
+        error: 'No API key configured. Add one in Settings.',
+      };
+    }
+
+    try {
+      switch (this.config.provider) {
+        case 'anthropic':
+          return await this.streamFromAnthropic(userMessage, character, extraContext, onDelta, signal);
+        case 'openai':
+          return await this.streamFromOpenAI(userMessage, character, extraContext, onDelta, signal);
+        case 'gemini':
+          return await this.streamFromGemini(userMessage, character, extraContext, onDelta, signal);
+        default:
+          return { success: false, error: 'Unknown provider.' };
+      }
+    } catch (error) {
+      // AbortError is the expected shape when the user cancels mid-stream
+      // (handleNewChat, navigating away) - not a real failure, so it's
+      // surfaced distinctly rather than as a generic "API Error".
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return { success: false, error: 'Request cancelled.' };
+      }
+      return {
+        success: false,
+        error: `API Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        provider: this.config.provider,
+      };
+    }
+  }
+
+  private async streamFromAnthropic(
+    userMessage: string,
+    character: string,
+    extraContext: string | undefined,
+    onDelta: (chunk: string) => void,
+    signal?: AbortSignal
+  ): Promise<APIResponse> {
+    const systemPrompt = this.buildSystemPrompt(character, extraContext);
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': this.config.apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: this.config.model || 'claude-opus-4-1',
+        max_tokens: 1024,
+        stream: true,
+        ...(this.config.temperature !== undefined ? { temperature: this.config.temperature } : {}),
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMessage }],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: `Anthropic API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
+        provider: 'anthropic',
+      };
+    }
+
+    // Anthropic's stream is a sequence of typed events; the only ones
+    // carrying text are content_block_delta events with a text_delta.
+    // Other event types (message_start, content_block_start,
+    // message_delta, message_stop, ping) carry no text and are
+    // skipped rather than erroring on their differently-shaped JSON.
+    let content = '';
+    for await (const payload of parseSSELines(response)) {
+      try {
+        const event = JSON.parse(payload);
+        const delta = event?.delta?.text;
+        if (typeof delta === 'string' && delta.length > 0) {
+          content += delta;
+          onDelta(delta);
+        }
+      } catch {
+        // Non-JSON or unrecognized event line - skip rather than abort the stream
+      }
+    }
+
+    return { success: true, content, provider: 'anthropic' };
+  }
+
+  private async streamFromOpenAI(
+    userMessage: string,
+    character: string,
+    extraContext: string | undefined,
+    onDelta: (chunk: string) => void,
+    signal?: AbortSignal
+  ): Promise<APIResponse> {
+    const systemPrompt = this.buildSystemPrompt(character, extraContext);
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.config.model || 'gpt-4o-mini',
+        max_tokens: 1024,
+        stream: true,
+        ...(this.config.temperature !== undefined ? { temperature: this.config.temperature } : {}),
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: `OpenAI API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
+        provider: 'openai',
+      };
+    }
+
+    let content = '';
+    for await (const payload of parseSSELines(response)) {
+      if (payload === '[DONE]') break;
+      try {
+        const chunk = JSON.parse(payload);
+        const delta = chunk?.choices?.[0]?.delta?.content;
+        if (typeof delta === 'string' && delta.length > 0) {
+          content += delta;
+          onDelta(delta);
+        }
+      } catch {
+        // Skip malformed/partial chunk rather than aborting the stream
+      }
+    }
+
+    return { success: true, content, provider: 'openai' };
+  }
+
+  private async streamFromGemini(
+    userMessage: string,
+    character: string,
+    extraContext: string | undefined,
+    onDelta: (chunk: string) => void,
+    signal?: AbortSignal
+  ): Promise<APIResponse> {
+    const systemPrompt = this.buildSystemPrompt(character, extraContext);
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:streamGenerateContent?alt=sse&key=${this.config.apiKey}`,
+      {
+        method: 'POST',
+        signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts: [{ text: userMessage }] }],
+          generation_config: {
+            maxOutputTokens: 1024,
+            ...(this.config.temperature !== undefined ? { temperature: this.config.temperature } : {}),
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        error: `Google Gemini API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
+        provider: 'gemini',
+      };
+    }
+
+    // Each SSE payload here is a full candidate-chunk (same shape as
+    // the non-streaming response), not a bare text delta like the
+    // other two providers - so the "delta" is the whole parts[0].text
+    // of that chunk, appended as one unit.
+    let content = '';
+    for await (const payload of parseSSELines(response)) {
+      try {
+        const chunk = JSON.parse(payload);
+        const delta = chunk?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (typeof delta === 'string' && delta.length > 0) {
+          content += delta;
+          onDelta(delta);
+        }
+      } catch {
+        // Skip malformed/partial chunk rather than aborting the stream
+      }
+    }
+
+    return { success: true, content, provider: 'gemini' };
   }
 
   private async sendToAnthropic(userMessage: string, character: string, extraContext?: string): Promise<APIResponse> {
