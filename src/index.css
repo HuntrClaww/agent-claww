@@ -16,3 +16,57 @@ body {
         transform: scale(1);
     }
 }
+
+/* --- UI polish: liquid glass + neon glow utilities ---
+   Applied selectively (buttons + voice/audio animation elements),
+   not globally, so this stays an accent rather than replacing the
+   existing dark theme wholesale. */
+
+/* Liquid-glass surface: translucent, blurred backdrop with a subtle
+   light-reflective top edge (the inset highlight below mimics a
+   glass panel catching light along its upper rim). Layer this ON TOP
+   of an element's existing background/border classes - it only adds
+   the blur, sheen, and highlight, it doesn't replace color. */
+.glass-surface {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03));
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.25),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+        0 4px 24px rgba(0, 0, 0, 0.25);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+.glass-surface:hover {
+    border-color: rgba(255, 255, 255, 0.28);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+        0 6px 28px rgba(0, 0, 0, 0.3);
+}
+.glass-surface:active {
+    transform: scale(0.98);
+}
+
+/* Neon/energy glow, in a few accent colors matching the app's
+   existing teal/amber/red palette. Meant for anything representing
+   live audio/voice activity (mic pulse, waveform bars, streaming
+   indicator) - a soft outer bloom rather than a hard outline, so it
+   reads as "energy" rather than just a colored border. */
+@keyframes glow-pulse {
+    0%, 100% { filter: drop-shadow(0 0 3px currentColor) drop-shadow(0 0 8px currentColor); opacity: 0.85; }
+    50% { filter: drop-shadow(0 0 7px currentColor) drop-shadow(0 0 18px currentColor); opacity: 1; }
+}
+.glow-neon {
+    animation: glow-pulse 1.4s ease-in-out infinite;
+}
+.glow-teal { color: #2dd4bf; }
+.glow-amber { color: #fbbf24; }
+.glow-red { color: #f87171; }
+
+/* Static (non-pulsing) glow for elements that shouldn't animate but
+   should still read as "lit up" - e.g. a hover state. */
+.glow-static {
+    filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 10px currentColor);
+}

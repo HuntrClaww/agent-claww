@@ -766,10 +766,10 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center font-bold text-slate-900 shrink-0 shadow-lg text-xs">
                       AI
                     </div>
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-600 rounded-tl-sm flex items-center gap-1.5 shadow-md">
-                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                    <div className="glass-surface p-4 rounded-2xl rounded-tl-sm flex items-center gap-1.5">
+                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce glow-neon glow-teal"></div>
+                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce glow-neon glow-teal" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce glow-neon glow-teal" style={{ animationDelay: '0.4s' }}></div>
                     </div>
                   </div>
                 )}
@@ -814,7 +814,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                           ? 'Ask about a character, or say "be ___"...'
                           : `Message ${activeMode?.characterName || 'your character'}...`
                       }
-                      className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-500/30 transition-all placeholder-slate-500 shadow-inner hover:border-slate-500"
+                      className="glass-surface w-full px-4 py-3 focus:outline-none focus:border-teal-400/60 focus:ring-2 focus:ring-teal-500/30 transition-all placeholder-slate-500 rounded-xl"
                     />
                   </div>
                   {isMicSupported() && (
@@ -822,20 +822,20 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                       onClick={toggleMic}
                       disabled={isStreaming}
                       title={isListening ? 'Stop listening' : 'Speak your message'}
-                      className={`px-3.5 py-3 rounded-xl transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed ${
-                        isListening
-                          ? 'bg-red-500/90 hover:bg-red-500 text-white animate-pulse'
-                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600'
+                      className={`glass-surface px-3.5 py-3 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isListening ? 'bg-red-500/30 text-red-300' : 'text-slate-300'
                       }`}
                     >
-                      {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                      {isListening
+                        ? <MicOff size={18} className="glow-neon glow-red" />
+                        : <Mic size={18} />}
                     </button>
                   )}
                   <button
                     onClick={handleSend}
                     disabled={!inputText.trim() || isStreaming}
                     style={activeThemeColor ? { background: activeThemeColor } : undefined}
-                    className={`${activeThemeColor ? '' : 'bg-gradient-to-br from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600'} disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium transition-all shadow-md hover:shadow-lg active:shadow-sm disabled:hover:shadow-md`}
+                    className={`glass-surface ${activeThemeColor ? '' : 'bg-gradient-to-br from-teal-600/80 to-teal-700/80'} disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium disabled:hover:shadow-none`}
                   >
                     Send
                   </button>
