@@ -4,7 +4,7 @@ import HelpHub from './HelpHub';
 import CharacterSelect from './CharacterSelect';
 import CharacterPortrait from './CharacterPortrait';
 import Sidebar from './Sidebar';
-import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
+import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX, Mic, MicOff, Square } from 'lucide-react';
 import { APIClient, detectAPIProvider, type ChatTurn } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
@@ -302,6 +302,14 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     }
   };
 
+  // Stop an in-flight AI response without leaving the conversation
+  // (unlike handleNewChat, which also resets activeMode/messages).
+  // Whatever text had already streamed in stays on screen — see the
+  // wasCancelled handling in handleSend.
+  const handleStopGenerating = () => {
+    abortControllerRef.current?.abort();
+  };
+
   // Handle starting a new chat
   const handleNewChat = () => {
     // Cancel any pending API request
@@ -440,7 +448,17 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     };
 
     const aiResponse = await sendAPIRequest(prompt, character, extraContext, history, handleDelta);
-    const { cleanedText, emotion } = parseEmotion(aiResponse);
+
+    // If the user hit Stop mid-stream, sendAPIRequest resolves with
+    // the literal 'Request cancelled.' string (see apiClient.ts's
+    // AbortError handling) rather than real content. Whatever had
+    // already streamed in (`accumulated`) is real AI output and
+    // should stay on screen, not get overwritten by that message -
+    // same behavior most chat apps use for a stop button.
+    const wasCancelled = aiResponse === 'Request cancelled.';
+    const finalRaw = wasCancelled && placeholderAdded ? accumulated : aiResponse;
+    const { cleanedText: rawCleanedText, emotion } = parseEmotion(finalRaw);
+    const cleanedText = wasCancelled && placeholderAdded ? `${rawCleanedText}\n\n*(stopped)*` : rawCleanedText;
 
     if (!placeholderAdded) {
       // No deltas ever arrived (e.g. an error before any streaming
@@ -455,6 +473,14 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     }
     setIsTyping(false);
     setIsStreaming(false);
+
+    if (wasCancelled) {
+      // Don't leave the "Request cancelled." text sitting in the
+      // status banner — stopping generation isn't an error.
+      setApiStatus('idle');
+      setApiMessage('');
+      return;
+    }
 
     // Update this session's budget estimate (prompt + system/character
     // context + the response itself) and surface a heads-up once the
@@ -831,14 +857,25 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                         : <Mic size={18} />}
                     </button>
                   )}
-                  <button
-                    onClick={handleSend}
-                    disabled={!inputText.trim() || isStreaming}
-                    style={activeThemeColor ? { background: activeThemeColor } : undefined}
-                    className={`glass-surface ${activeThemeColor ? '' : 'bg-gradient-to-br from-teal-600/80 to-teal-700/80'} disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium disabled:hover:shadow-none`}
-                  >
-                    Send
-                  </button>
+                  {isStreaming ? (
+                    <button
+                      onClick={handleStopGenerating}
+                      title="Stop generating"
+                      className="glass-surface bg-red-500/20 text-red-300 px-6 py-3 rounded-xl font-medium flex items-center gap-2"
+                    >
+                      <Square size={16} fill="currentColor" />
+                      Stop
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSend}
+                      disabled={!inputText.trim()}
+                      style={activeThemeColor ? { background: activeThemeColor } : undefined}
+                      className={`glass-surface ${activeThemeColor ? '' : 'bg-gradient-to-br from-teal-600/80 to-teal-700/80'} disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium disabled:hover:shadow-none`}
+                    >
+                      Send
+                    </button>
+                  )}
                 </div>
                 {inputText.length > 1600 && (
                   <span className="self-end text-[11px] text-slate-500 pr-1">
