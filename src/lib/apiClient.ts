@@ -15,6 +15,15 @@ export interface APIResponse {
   provider?: string;
 }
 
+/** One prior turn of conversation history, in provider-agnostic form.
+ * 'assistant' is used regardless of provider - each streamFrom*
+ * method below maps it to that provider's own role name (Gemini
+ * calls it 'model', not 'assistant'). */
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 /**
  * Gives a 429 response a clearer, actionable message than the
  * provider's raw error body - "you've sent requests too fast, wait a
@@ -113,11 +122,19 @@ export class APIClient {
    * would have returned). Callers that don't need streaming should
    * keep using sendMessage() - this exists for the chat UI's
    * character-by-character rendering specifically.
+   *
+   * `history` is prior conversation turns (NOT including
+   * userMessage, which is the new one being sent) - the caller is
+   * responsible for capping its length/size before passing it in
+   * (see ChatWindow.tsx's history-building logic), since that's a
+   * UI-level cost/context tradeoff decision, not something this
+   * provider-agnostic client should decide on its own.
    */
   async sendMessageStream(
     userMessage: string,
     character: string,
     extraContext: string | undefined,
+    history: ChatTurn[],
     onDelta: (chunk: string) => void,
     signal?: AbortSignal
   ): Promise<APIResponse> {
@@ -131,11 +148,11 @@ export class APIClient {
     try {
       switch (this.config.provider) {
         case 'anthropic':
-          return await this.streamFromAnthropic(userMessage, character, extraContext, onDelta, signal);
+          return await this.streamFromAnthropic(userMessage, character, extraContext, history, onDelta, signal);
         case 'openai':
-          return await this.streamFromOpenAI(userMessage, character, extraContext, onDelta, signal);
+          return await this.streamFromOpenAI(userMessage, character, extraContext, history, onDelta, signal);
         case 'gemini':
-          return await this.streamFromGemini(userMessage, character, extraContext, onDelta, signal);
+          return await this.streamFromGemini(userMessage, character, extraContext, history, onDelta, signal);
         default:
           return { success: false, error: 'Unknown provider.' };
       }
@@ -158,6 +175,7 @@ export class APIClient {
     userMessage: string,
     character: string,
     extraContext: string | undefined,
+    history: ChatTurn[],
     onDelta: (chunk: string) => void,
     signal?: AbortSignal
   ): Promise<APIResponse> {
@@ -177,7 +195,10 @@ export class APIClient {
         stream: true,
         ...(this.config.temperature !== undefined ? { temperature: this.config.temperature } : {}),
         system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }],
+        messages: [
+          ...history.map(turn => ({ role: turn.role, content: turn.content })),
+          { role: 'user', content: userMessage },
+        ],
       }),
     });
 
@@ -218,6 +239,7 @@ export class APIClient {
     userMessage: string,
     character: string,
     extraContext: string | undefined,
+    history: ChatTurn[],
     onDelta: (chunk: string) => void,
     signal?: AbortSignal
   ): Promise<APIResponse> {
@@ -237,6 +259,7 @@ export class APIClient {
         ...(this.config.temperature !== undefined ? { temperature: this.config.temperature } : {}),
         messages: [
           { role: 'system', content: systemPrompt },
+          ...history.map(turn => ({ role: turn.role, content: turn.content })),
           { role: 'user', content: userMessage },
         ],
       }),
@@ -275,6 +298,7 @@ export class APIClient {
     userMessage: string,
     character: string,
     extraContext: string | undefined,
+    history: ChatTurn[],
     onDelta: (chunk: string) => void,
     signal?: AbortSignal
   ): Promise<APIResponse> {
@@ -288,7 +312,16 @@ export class APIClient {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ parts: [{ text: userMessage }] }],
+          contents: [
+            // Gemini calls the AI's role 'model', not 'assistant' - the
+            // only place that mapping needs to happen, since ChatTurn
+            // is deliberately provider-agnostic everywhere else.
+            ...history.map(turn => ({
+              role: turn.role === 'assistant' ? 'model' : 'user',
+              parts: [{ text: turn.content }],
+            })),
+            { role: 'user', parts: [{ text: userMessage }] },
+          ],
           generation_config: {
             maxOutputTokens: 1024,
             ...(this.config.temperature !== undefined ? { temperature: this.config.temperature } : {}),
@@ -296,6 +329,7 @@ export class APIClient {
         }),
       }
     );
+
 
     if (!response.ok) {
       const errorData = await response.json();

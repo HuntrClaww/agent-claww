@@ -5,7 +5,7 @@ import CharacterSelect from './CharacterSelect';
 import CharacterPortrait from './CharacterPortrait';
 import Sidebar from './Sidebar';
 import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX, Mic, MicOff } from 'lucide-react';
-import { APIClient, detectAPIProvider } from '../lib/apiClient';
+import { APIClient, detectAPIProvider, type ChatTurn } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
 import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
 import { loadThread, saveThread, personalityThreadKey, GENERIC_THREAD_KEY, type Message } from '../lib/chatLogStore';
@@ -16,6 +16,16 @@ import { flagUnusualTokens, extractKnownProperNouns } from '../lib/wordFlagging'
 
 // Message shape now lives in chatLogStore.ts (imported above) so the
 // persistence layer and the UI share one definition.
+
+// How many recent messages (user + AI combined) are sent to the API
+// as conversation history on each request. Bounds the per-turn token
+// cost as a conversation grows - without a cap, history would grow
+// unboundedly and both cost and sessionTokenEstimate (see
+// sessionBudget.ts) would balloon on a long-running chat. 20 messages
+// is roughly the last 10 exchanges - enough for the AI to track the
+// immediate conversational thread without re-sending the entire
+// history of a very long session on every single message.
+const MAX_HISTORY_MESSAGES = 20;
 
 // Parses the mode string coming out of CharacterSelect:
 //   'generic'                                            -> Generic Mode
@@ -252,6 +262,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     userText: string,
     character: string,
     extraContext: string | undefined,
+    history: ChatTurn[],
     onDelta: (chunk: string) => void
   ): Promise<string> => {
     if (!apiClient) {
@@ -269,6 +280,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
         userText,
         character,
         extraContext,
+        history,
         onDelta,
         abortControllerRef.current.signal
       );
@@ -390,6 +402,22 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       extraContext = [bio, seed, EMOTION_TAG_INSTRUCTION].filter(Boolean).join('\n\n');
     }
 
+    // Build conversation history for the API call (fixes the
+    // conversation-memory gap - previously only the system prompt +
+    // this single new message were ever sent, so the AI had no
+    // memory of earlier turns despite the UI showing full scrollback).
+    // Capped at MAX_HISTORY_MESSAGES to keep the per-turn token cost
+    // (and therefore sessionTokenEstimate above) bounded rather than
+    // growing unboundedly as a conversation gets long - a deliberate
+    // tradeoff against the token-budget goal this ships alongside.
+    // Uses `messages` as of the last render, which correctly excludes
+    // the user message just added above (state hasn't re-rendered
+    // within this same synchronous function run yet).
+    const history: ChatTurn[] = messages
+      .slice(-MAX_HISTORY_MESSAGES)
+      .filter(m => m.content.trim().length > 0)
+      .map(m => ({ role: m.role === 'ai' ? 'assistant' as const : 'user' as const, content: m.content }));
+
     // 3. Send to real API, streaming tokens into a placeholder message
     // as they arrive. The placeholder is only added to `messages` on
     // the FIRST delta (not before) so the bouncing-dots indicator
@@ -411,7 +439,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       }
     };
 
-    const aiResponse = await sendAPIRequest(prompt, character, extraContext, handleDelta);
+    const aiResponse = await sendAPIRequest(prompt, character, extraContext, history, handleDelta);
     const { cleanedText, emotion } = parseEmotion(aiResponse);
 
     if (!placeholderAdded) {
@@ -433,7 +461,12 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     // warning threshold is crossed - purely informational, sending
     // still works until the hard-stop threshold (checked at the top
     // of handleSend on the NEXT message).
-    const turnTokens = estimateTokens(prompt) + estimateTokens(extraContext ?? '') + estimateTokens(aiResponse);
+    // History is resent in full on every turn (see MAX_HISTORY_MESSAGES
+    // above), so it's real, recurring cost - included here so the
+    // budget estimate reflects what's actually being sent, not just
+    // this turn's new content.
+    const historyTokens = history.reduce((sum, turn) => sum + estimateTokens(turn.content), 0);
+    const turnTokens = estimateTokens(prompt) + estimateTokens(extraContext ?? '') + estimateTokens(aiResponse) + historyTokens;
     setSessionTokenEstimate(prev => {
       const next = prev + turnTokens;
       if (classifyBudget(next) === 'warning' && classifyBudget(prev) === 'ok') {
