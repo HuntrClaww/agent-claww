@@ -39,6 +39,30 @@ function isRateLimited(status: number): boolean {
 const RATE_LIMIT_MESSAGE = "You're sending messages faster than this API key's rate limit allows. Wait a few seconds and try again.";
 
 /**
+ * Best-effort parse of an error response body. Providers normally
+ * return JSON with an `error.message` field, but a proxy, gateway
+ * timeout, or CORS failure can return plain text, HTML, or an empty
+ * body instead - calling response.json() directly on those throws a
+ * confusing "Unexpected token" parse error instead of a real message.
+ * This never throws: falls back to the raw text, or a generic
+ * message if even that fails.
+ */
+async function parseErrorMessage(response: Response): Promise<string> {
+  let raw = '';
+  try {
+    raw = await response.text();
+  } catch {
+    return 'Unknown error';
+  }
+  try {
+    const data = JSON.parse(raw);
+    return data?.error?.message || raw.slice(0, 200) || 'Unknown error';
+  } catch {
+    return raw.trim().slice(0, 200) || 'Unknown error';
+  }
+}
+
+/**
  * Parses a fetch Response body as Server-Sent Events, yielding each
  * event's raw `data:` payload as a string. Shared across all three
  * providers below since they all speak SSE, even though the JSON
@@ -203,12 +227,12 @@ export class APIClient {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorMsg = await parseErrorMessage(response);
       return {
         success: false,
         error: isRateLimited(response.status)
           ? RATE_LIMIT_MESSAGE
-          : `Anthropic API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
+          : `Anthropic API Error (${response.status}): ${errorMsg}`,
         provider: 'anthropic',
       };
     }
@@ -266,12 +290,12 @@ export class APIClient {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorMsg = await parseErrorMessage(response);
       return {
         success: false,
         error: isRateLimited(response.status)
           ? RATE_LIMIT_MESSAGE
-          : `OpenAI API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
+          : `OpenAI API Error (${response.status}): ${errorMsg}`,
         provider: 'openai',
       };
     }
@@ -332,12 +356,12 @@ export class APIClient {
 
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorMsg = await parseErrorMessage(response);
       return {
         success: false,
         error: isRateLimited(response.status)
           ? RATE_LIMIT_MESSAGE
-          : `Google Gemini API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
+          : `Google Gemini API Error (${response.status}): ${errorMsg}`,
         provider: 'gemini',
       };
     }
@@ -388,10 +412,10 @@ export class APIClient {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorMsg = await parseErrorMessage(response);
       return {
         success: false,
-        error: `Anthropic API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
+        error: `Anthropic API Error (${response.status}): ${errorMsg}`,
         provider: 'anthropic',
       };
     }
@@ -433,10 +457,10 @@ export class APIClient {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorMsg = await parseErrorMessage(response);
       return {
         success: false,
-        error: `OpenAI API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
+        error: `OpenAI API Error (${response.status}): ${errorMsg}`,
         provider: 'openai',
       };
     }
@@ -479,10 +503,10 @@ export class APIClient {
     );
 
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorMsg = await parseErrorMessage(response);
       return {
         success: false,
-        error: `Google Gemini API Error (${response.status}): ${errorData.error?.message || 'Unknown error'}`,
+        error: `Google Gemini API Error (${response.status}): ${errorMsg}`,
         provider: 'gemini',
       };
     }
