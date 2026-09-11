@@ -1,6 +1,6 @@
 {
   "name": "stageego",
-  "description": "StageEgo - AI-powered performance coach and scene analyzer. Elevate your presence on any stage.",
+  "description": "StageEgo - Chat with any character, your way. A two-sided AI character chatbot with free-switching Generic Mode and locked-in Personality Mode.",
   "private": true,
   "version": "0.1.0",
   "type": "module",
