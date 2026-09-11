@@ -1,3 +1,12 @@
+import { recordAPICall, startTimer, estimatePromptTokens } from './apiLogger';
+import { estimateTokens } from './sessionBudget';
+
+const DEFAULT_MODEL: Record<APIConfig['provider'], string> = {
+  anthropic: 'claude-opus-4-1',
+  openai: 'gpt-4o-mini',
+  gemini: 'gemini-pro', // matches the hardcoded model in sendToGemini/streamFromGemini below
+};
+
 export interface APIConfig {
   provider: 'anthropic' | 'openai' | 'gemini';
   apiKey: string;
@@ -115,27 +124,61 @@ export class APIClient {
       };
     }
 
+    const stopTimer = startTimer();
+    let result: APIResponse;
     try {
       switch (this.config.provider) {
         case 'anthropic':
-          return await this.sendToAnthropic(userMessage, character, extraContext);
+          result = await this.sendToAnthropic(userMessage, character, extraContext);
+          break;
         case 'openai':
-          return await this.sendToOpenAI(userMessage, character, extraContext);
+          result = await this.sendToOpenAI(userMessage, character, extraContext);
+          break;
         case 'gemini':
-          return await this.sendToGemini(userMessage, character, extraContext);
+          result = await this.sendToGemini(userMessage, character, extraContext);
+          break;
         default:
-          return {
-            success: false,
-            error: 'Unknown provider.',
-          };
+          result = { success: false, error: 'Unknown provider.' };
       }
     } catch (error) {
-      return {
+      result = {
         success: false,
         error: `API Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
         provider: this.config.provider,
       };
     }
+    this.logCall(false, userMessage, extraContext, 0, stopTimer(), result);
+    return result;
+  }
+
+  /**
+   * Shared logging call for both sendMessage() and sendMessageStream().
+   * Fire-and-forget - never awaited, never allowed to affect the
+   * actual API result already being returned to the caller.
+   */
+  private logCall(
+    streaming: boolean,
+    userMessage: string,
+    extraContext: string | undefined,
+    historyChars: number,
+    latencyMs: number,
+    result: APIResponse
+  ): void {
+    const status: 'success' | 'error' | 'cancelled' =
+      result.success ? 'success' : result.error === 'Request cancelled.' ? 'cancelled' : 'error';
+    const httpStatusMatch = result.error?.match(/\((\d{3})\)/);
+    recordAPICall({
+      timestamp: Date.now(),
+      provider: this.config.provider,
+      model: this.config.model || DEFAULT_MODEL[this.config.provider],
+      streaming,
+      status,
+      latencyMs,
+      promptTokensEst: estimatePromptTokens(userMessage, extraContext, historyChars),
+      responseTokensEst: estimateTokens(result.content ?? ''),
+      httpStatus: httpStatusMatch ? Number(httpStatusMatch[1]) : undefined,
+      errorMessage: status === 'error' ? result.error : undefined,
+    }).catch(() => {});
   }
 
   /**
@@ -169,30 +212,39 @@ export class APIClient {
       };
     }
 
+    const stopTimer = startTimer();
+    let result: APIResponse;
     try {
       switch (this.config.provider) {
         case 'anthropic':
-          return await this.streamFromAnthropic(userMessage, character, extraContext, history, onDelta, signal);
+          result = await this.streamFromAnthropic(userMessage, character, extraContext, history, onDelta, signal);
+          break;
         case 'openai':
-          return await this.streamFromOpenAI(userMessage, character, extraContext, history, onDelta, signal);
+          result = await this.streamFromOpenAI(userMessage, character, extraContext, history, onDelta, signal);
+          break;
         case 'gemini':
-          return await this.streamFromGemini(userMessage, character, extraContext, history, onDelta, signal);
+          result = await this.streamFromGemini(userMessage, character, extraContext, history, onDelta, signal);
+          break;
         default:
-          return { success: false, error: 'Unknown provider.' };
+          result = { success: false, error: 'Unknown provider.' };
       }
     } catch (error) {
       // AbortError is the expected shape when the user cancels mid-stream
       // (handleNewChat, navigating away) - not a real failure, so it's
       // surfaced distinctly rather than as a generic "API Error".
       if (error instanceof DOMException && error.name === 'AbortError') {
-        return { success: false, error: 'Request cancelled.' };
+        result = { success: false, error: 'Request cancelled.' };
+      } else {
+        result = {
+          success: false,
+          error: `API Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          provider: this.config.provider,
+        };
       }
-      return {
-        success: false,
-        error: `API Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        provider: this.config.provider,
-      };
     }
+    const historyChars = history.reduce((sum, turn) => sum + turn.content.length, 0);
+    this.logCall(true, userMessage, extraContext, historyChars, stopTimer(), result);
+    return result;
   }
 
   private async streamFromAnthropic(
