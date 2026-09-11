@@ -26,7 +26,13 @@ body {
    light-reflective top edge (the inset highlight below mimics a
    glass panel catching light along its upper rim). Layer this ON TOP
    of an element's existing background/border classes - it only adds
-   the blur, sheen, and highlight, it doesn't replace color. */
+   the blur, sheen, and highlight, it doesn't replace color.
+
+   will-change hints the browser to promote this to its own GPU
+   compositor layer ahead of time, since backdrop-filter is the most
+   expensive property here - this keeps hover/press transitions smooth
+   even with several glass surfaces on screen at once (input + send +
+   mic + stop button), rather than only optimizing after first paint. */
 .glass-surface {
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03));
     backdrop-filter: blur(16px) saturate(180%);
@@ -36,7 +42,8 @@ body {
         inset 0 1px 0 rgba(255, 255, 255, 0.25),
         inset 0 0 0 1px rgba(255, 255, 255, 0.04),
         0 4px 24px rgba(0, 0, 0, 0.25);
-    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease, background 0.2s ease;
+    will-change: backdrop-filter, transform;
 }
 .glass-surface:hover {
     border-color: rgba(255, 255, 255, 0.28);
@@ -69,4 +76,35 @@ body {
    should still read as "lit up" - e.g. a hover state. */
 .glow-static {
     filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 10px currentColor);
+}
+
+/* Respect the OS-level "reduce motion" accessibility setting
+   automatically, independent of the in-app Visual Effects toggle
+   (SettingsModal.tsx, Advanced tab) below. The glass blur/sheen stays
+   (it's not motion, just a static visual style) - only the pulsing
+   animation is disabled, replaced with the steady glow-static look so
+   the element doesn't just go dark. */
+@media (prefers-reduced-motion: reduce) {
+    .glow-neon {
+        animation: none;
+        filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 10px currentColor);
+        opacity: 1;
+    }
+}
+
+/* Manual override, driven by the "Visual Effects" toggle in Settings
+   (Advanced tab). Off by default - full effects run for everyone
+   until someone deliberately opts out, e.g. for an older device where
+   backdrop-filter is genuinely heavy. Applied as a class on <html> so
+   it works everywhere without touching every component's JSX. */
+html.reduce-effects .glass-surface {
+    background: rgba(30, 41, 59, 0.9); /* solid slate-800-ish fallback, no blur */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    will-change: auto;
+}
+html.reduce-effects .glow-neon,
+html.reduce-effects .glow-static {
+    animation: none;
+    filter: none;
 }
