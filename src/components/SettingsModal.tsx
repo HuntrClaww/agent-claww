@@ -20,6 +20,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
   const [apiKey, setApiKey] = useState('');
   const [profanityFilter, setProfanityFilter] = useState('medium');
   const [temperature, setTemperature] = useState(1.0);
+  const [reduceEffects, setReduceEffects] = useState(false);
   const [characterCount, setCharacterCount] = useState(0);
   const [clearConfirm, setClearConfirm] = useState(false);
   const [showKeyHelp, setShowKeyHelp] = useState(false);
@@ -43,6 +44,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
       setApiKey(savedKey);
       setProfanityFilter(savedFilter);
       setTemperature(savedTemp ? parseFloat(savedTemp) : 1.0);
+      setReduceEffects(localStorage.getItem('reduce_visual_effects') === 'true');
       setCharacterCount(listCharacters().length);
       setValidationStatus('idle');
       setValidationMessage('');
@@ -124,6 +126,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
     localStorage.setItem('user_api_key', apiKey);
     localStorage.setItem('profanity_filter', profanityFilter);
     localStorage.setItem('ai_temperature', String(temperature));
+    localStorage.setItem('reduce_visual_effects', String(reduceEffects));
 
     // Trigger refresh in other components
     window.dispatchEvent(new Event('profileUpdated'));
@@ -287,6 +290,32 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
                   <p className="text-xs text-slate-500 mt-2">
                     Lower values (0–0.5) make responses more focused and predictable. Higher values (1.5–2.0) make them more varied and creative.
                   </p>
+                </div>
+
+                <div className="pt-2 border-t border-slate-700">
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <div className="pr-4">
+                      <span className="text-sm font-medium text-slate-300">Reduce Visual Effects</span>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Turns off the glass-blur and glow animations on buttons and the input field. Full effects are on by default — switch this on only if the app feels slow or laggy on your device.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={reduceEffects}
+                      onClick={() => setReduceEffects(v => !v)}
+                      className={`shrink-0 relative w-11 h-6 rounded-full transition-colors ${
+                        reduceEffects ? 'bg-teal-600' : 'bg-slate-600'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                          reduceEffects ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </label>
                 </div>
               </div>
             )}

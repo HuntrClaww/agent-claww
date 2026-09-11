@@ -20,7 +20,7 @@ function App() {
   // --- THEME LOGIC ADDITION ---
   useEffect(() => {
     // Set page title for StageEgo
-    document.title = 'StageEgo - Your AI Performance Coach';
+    document.title = 'StageEgo';
 
     const applyTheme = () => {
       const theme = localStorage.getItem('theme_preference') || 'dark';
@@ -42,6 +42,25 @@ function App() {
     return () => window.removeEventListener('profileUpdated', applyTheme);
   }, []);
   // ----------------------------
+
+  // --- VISUAL EFFECTS TOGGLE ---
+  // Manual opt-out from the liquid-glass/neon-glow styling (see
+  // index.css), for people on older/lower-power devices where
+  // backdrop-filter is genuinely heavy. Off by default - full effects
+  // run for everyone until someone deliberately turns this on in
+  // Settings > Advanced. Reuses the same 'profileUpdated' event the
+  // theme toggle already listens for, since Settings' Save button
+  // fires it once for everything that changed.
+  useEffect(() => {
+    const applyVisualEffects = () => {
+      const reduceEffects = localStorage.getItem('reduce_visual_effects') === 'true';
+      document.documentElement.classList.toggle('reduce-effects', reduceEffects);
+    };
+    applyVisualEffects();
+    window.addEventListener('profileUpdated', applyVisualEffects);
+    return () => window.removeEventListener('profileUpdated', applyVisualEffects);
+  }, []);
+  // ------------------------------
 
   if (sessionState === 'loggedOut') {
     return (
