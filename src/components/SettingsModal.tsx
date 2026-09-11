@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, AlertCircle, Zap, Settings2, Bot, Users, SlidersHorizontal, Trash2, HelpCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle, Zap, Settings2, Bot, Users, SlidersHorizontal, Trash2, HelpCircle, Activity, Download } from 'lucide-react';
 import HelpPopup from './HelpPopup';
 import { validateAPIKey } from '../lib/apiValidator';
 import { listCharacters, deleteCharacter } from '../lib/characterStore';
+import { getRecentLogs, getLogStats, exportLogsAsJSON, clearAllLogs, type APILogEntry, type LogStats } from '../lib/apiLogger';
 
-type SettingsTab = 'general' | 'assistant' | 'characters' | 'advanced';
+type SettingsTab = 'general' | 'assistant' | 'characters' | 'advanced' | 'diagnostics';
 
 const TABS: { id: SettingsTab; label: string; icon: typeof Settings2 }[] = [
   { id: 'general', label: 'General', icon: Settings2 },
   { id: 'assistant', label: 'Standard Assistant', icon: Bot },
   { id: 'characters', label: 'Character Management', icon: Users },
   { id: 'advanced', label: 'Advanced', icon: SlidersHorizontal },
+  { id: 'diagnostics', label: 'Performance Log', icon: Activity },
 ];
 
 export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
@@ -21,6 +23,12 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
   const [characterCount, setCharacterCount] = useState(0);
   const [clearConfirm, setClearConfirm] = useState(false);
   const [showKeyHelp, setShowKeyHelp] = useState(false);
+
+  // Diagnostics / performance log state
+  const [logStats, setLogStats] = useState<LogStats | null>(null);
+  const [recentLogs, setRecentLogs] = useState<APILogEntry[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [clearLogsConfirm, setClearLogsConfirm] = useState(false);
 
   // Validation state
   const [validationStatus, setValidationStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
@@ -39,9 +47,47 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
       setValidationStatus('idle');
       setValidationMessage('');
       setClearConfirm(false);
+      setClearLogsConfirm(false);
       setActiveTab('general');
     }
   }, [isOpen]);
+
+  // Load diagnostics data on demand - only when that tab is actually
+  // opened, so it never costs anything for people who never look at it.
+  useEffect(() => {
+    if (activeTab !== 'diagnostics' || !isOpen) return;
+    let cancelled = false;
+    setLogsLoading(true);
+    Promise.all([getLogStats(), getRecentLogs(50)]).then(([stats, logs]) => {
+      if (cancelled) return;
+      setLogStats(stats);
+      setRecentLogs(logs);
+      setLogsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [activeTab, isOpen]);
+
+  const handleExportLogs = async () => {
+    const json = await exportLogsAsJSON();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stageego-api-log-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleClearLogs = async () => {
+    if (!clearLogsConfirm) {
+      setClearLogsConfirm(true);
+      return;
+    }
+    await clearAllLogs();
+    setLogStats(await getLogStats());
+    setRecentLogs([]);
+    setClearLogsConfirm(false);
+  };
 
   const handleTestAPI = async () => {
     if (!apiKey.trim()) {
@@ -242,6 +288,96 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
                     Lower values (0–0.5) make responses more focused and predictable. Higher values (1.5–2.0) make them more varied and creative.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'diagnostics' && (
+              <div className="space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">API Performance Log</h3>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleExportLogs}
+                      disabled={!logStats || logStats.totalCalls === 0}
+                      className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 transition-colors"
+                    >
+                      <Download size={13} /> Export
+                    </button>
+                    <button
+                      onClick={handleClearLogs}
+                      disabled={!logStats || logStats.totalCalls === 0}
+                      className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                        clearLogsConfirm ? 'bg-red-600 hover:bg-red-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                      }`}
+                    >
+                      <Trash2 size={13} /> {clearLogsConfirm ? 'Confirm clear' : 'Clear'}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 -mt-3">
+                  Kept locally in this browser only, for the last 7 days. Not sent anywhere.
+                </p>
+
+                {logsLoading && <p className="text-sm text-slate-500">Loading…</p>}
+
+                {!logsLoading && logStats && logStats.totalCalls === 0 && (
+                  <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-4 text-sm text-slate-500">
+                    No API calls logged yet. Send a message to a character and this fills in automatically.
+                  </div>
+                )}
+
+                {!logsLoading && logStats && logStats.totalCalls > 0 && (
+                  <>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
+                        <div className="text-xs text-slate-500">Total calls</div>
+                        <div className="text-lg font-semibold text-slate-200">{logStats.totalCalls}</div>
+                      </div>
+                      <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
+                        <div className="text-xs text-slate-500">Errors</div>
+                        <div className={`text-lg font-semibold ${logStats.errorCount > 0 ? 'text-red-400' : 'text-slate-200'}`}>{logStats.errorCount}</div>
+                      </div>
+                      <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
+                        <div className="text-xs text-slate-500">Avg latency</div>
+                        <div className="text-lg font-semibold text-slate-200">{logStats.avgLatencyMs}ms</div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">By provider</div>
+                      {Object.entries(logStats.byProvider).map(([provider, s]) => (
+                        <div key={provider} className="flex items-center justify-between text-sm bg-slate-900/30 rounded-lg px-3 py-2">
+                          <span className="text-slate-300 capitalize">{provider}</span>
+                          <span className="text-slate-500 text-xs">
+                            {s.calls} call{s.calls === 1 ? '' : 's'} · {s.errors} error{s.errors === 1 ? '' : 's'} · avg {s.avgLatencyMs}ms
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Recent calls</div>
+                      <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                        {recentLogs.map(log => (
+                          <div key={log.id} className="flex items-center justify-between text-xs bg-slate-900/30 rounded-lg px-3 py-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                log.status === 'success' ? 'bg-green-400' : log.status === 'cancelled' ? 'bg-slate-500' : 'bg-red-400'
+                              }`} />
+                              <span className="text-slate-300 capitalize shrink-0">{log.provider}</span>
+                              <span className="text-slate-500 truncate">
+                                {log.errorMessage ? log.errorMessage : `${log.latencyMs}ms`}
+                              </span>
+                            </div>
+                            <span className="text-slate-600 shrink-0 ml-2">
+                              {new Date(log.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
