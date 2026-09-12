@@ -18,6 +18,13 @@ export async function validateAPIKey(apiKey: string): Promise<ValidationResult> 
     return await validateAnthropicKey(apiKey);
   }
 
+  // OpenRouter key format (sk-or-v1-...) - checked before the generic
+  // sk- OpenAI fallback below, since OpenRouter's prefix is itself a
+  // superset of "sk-".
+  if (apiKey.startsWith('sk-or-')) {
+    return await validateOpenRouterKey(apiKey);
+  }
+
   // OpenAI key format
   if (apiKey.startsWith('sk-') && !apiKey.startsWith('sk-ant-')) {
     return await validateOpenAIKey(apiKey);
@@ -135,6 +142,53 @@ async function validateOpenAIKey(apiKey: string): Promise<ValidationResult> {
       isValid: false,
       provider: 'openai',
       message: '❌ Failed to connect to OpenAI API. Check your internet connection.',
+      error: err instanceof Error ? err.message : 'Network error',
+    };
+  }
+}
+
+async function validateOpenRouterKey(apiKey: string): Promise<ValidationResult> {
+  try {
+    // OpenRouter's dedicated key-info endpoint - built specifically for
+    // checking whether a key is valid (and its current limits/usage),
+    // rather than piggybacking on /models which doesn't require auth
+    // and so wouldn't actually prove the key works.
+    const response = await fetch('https://openrouter.ai/api/v1/auth/key', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+      },
+    });
+
+    if (response.ok) {
+      return {
+        isValid: true,
+        provider: 'openrouter',
+        message: '✅ OpenRouter API key is valid and working.',
+      };
+    }
+
+    if (response.status === 401) {
+      return {
+        isValid: false,
+        provider: 'openrouter',
+        message: '❌ OpenRouter API key is invalid or expired.',
+        error: 'Unauthorized',
+      };
+    }
+
+    const errorData = await response.json();
+    return {
+      isValid: false,
+      provider: 'openrouter',
+      message: `❌ OpenRouter API Error: ${errorData.error?.message || 'Unknown error'}`,
+      error: errorData.error?.message,
+    };
+  } catch (err) {
+    return {
+      isValid: false,
+      provider: 'openrouter',
+      message: '❌ Failed to connect to OpenRouter API. Check your internet connection.',
       error: err instanceof Error ? err.message : 'Network error',
     };
   }

@@ -27,7 +27,7 @@ const DB_VERSION = 1;
 const STORE_NAME = 'requests';
 const RETENTION_DAYS = 7;
 
-export type LogProvider = 'anthropic' | 'openai' | 'gemini';
+export type LogProvider = 'anthropic' | 'openai' | 'gemini' | 'openrouter';
 export type LogStatus = 'success' | 'error' | 'cancelled';
 
 export interface APILogEntry {

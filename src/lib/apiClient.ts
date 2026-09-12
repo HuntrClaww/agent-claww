@@ -5,10 +5,19 @@ const DEFAULT_MODEL: Record<APIConfig['provider'], string> = {
   anthropic: 'claude-opus-4-1',
   openai: 'gpt-4o-mini',
   gemini: 'gemini-flash-latest', // see note at both hardcoded URLs below re: why this replaced 'gemini-pro'
+  // 'openrouter/free' is OpenRouter's own router - it picks from whichever
+  // free models are currently available rather than pinning one by name.
+  // Deliberately NOT a specific model ID like 'meta-llama/llama-3.1-8b-instruct:free' -
+  // individual free model slugs get rotated/deprecated often (this is
+  // OpenRouter's normal free-tier churn, confirmed via their docs/community
+  // reports 2026-09-12), so pinning one would just recreate the gemini-pro
+  // problem above. Arthur can override with a specific paid model in
+  // Settings > Standard Assistant if he wants guaranteed model identity.
+  openrouter: 'openrouter/free',
 };
 
 export interface APIConfig {
-  provider: 'anthropic' | 'openai' | 'gemini';
+  provider: 'anthropic' | 'openai' | 'gemini' | 'openrouter';
   apiKey: string;
   model?: string;
   /** Controls response randomness/creativity. Range 0.0-2.0 for
@@ -134,6 +143,9 @@ export class APIClient {
         case 'openai':
           result = await this.sendToOpenAI(userMessage, character, extraContext);
           break;
+        case 'openrouter':
+          result = await this.sendToOpenRouter(userMessage, character, extraContext);
+          break;
         case 'gemini':
           result = await this.sendToGemini(userMessage, character, extraContext);
           break;
@@ -221,6 +233,9 @@ export class APIClient {
           break;
         case 'openai':
           result = await this.streamFromOpenAI(userMessage, character, extraContext, history, onDelta, signal);
+          break;
+        case 'openrouter':
+          result = await this.streamFromOpenRouter(userMessage, character, extraContext, history, onDelta, signal);
           break;
         case 'gemini':
           result = await this.streamFromGemini(userMessage, character, extraContext, history, onDelta, signal);
@@ -368,6 +383,74 @@ export class APIClient {
     }
 
     return { success: true, content, provider: 'openai' };
+  }
+
+  private async streamFromOpenRouter(
+    userMessage: string,
+    character: string,
+    extraContext: string | undefined,
+    history: ChatTurn[],
+    onDelta: (chunk: string) => void,
+    signal?: AbortSignal
+  ): Promise<APIResponse> {
+    // OpenRouter's API is OpenAI-compatible (same request/response shape,
+    // same SSE chunk format) - only the base URL, model naming
+    // ("vendor/model", e.g. "openai/gpt-4o-mini" or "openrouter/free"),
+    // and two optional attribution headers differ from streamFromOpenAI
+    // above. HTTP-Referer/X-Title aren't required for the request to
+    // work - they just let OpenRouter attribute usage to this app on
+    // their dashboard/rankings rather than showing as anonymous.
+    const systemPrompt = this.buildSystemPrompt(character, extraContext);
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.apiKey}`,
+        'HTTP-Referer': 'https://stageego.netlify.app',
+        'X-Title': 'StageEgo',
+      },
+      body: JSON.stringify({
+        model: this.config.model || DEFAULT_MODEL.openrouter,
+        max_tokens: 1024,
+        stream: true,
+        ...(this.config.temperature !== undefined ? { temperature: this.config.temperature } : {}),
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...history.map(turn => ({ role: turn.role, content: turn.content })),
+          { role: 'user', content: userMessage },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorMsg = await parseErrorMessage(response);
+      return {
+        success: false,
+        error: isRateLimited(response.status)
+          ? RATE_LIMIT_MESSAGE
+          : `OpenRouter API Error (${response.status}): ${errorMsg}`,
+        provider: 'openrouter',
+      };
+    }
+
+    let content = '';
+    for await (const payload of parseSSELines(response)) {
+      if (payload === '[DONE]') break;
+      try {
+        const chunk = JSON.parse(payload);
+        const delta = chunk?.choices?.[0]?.delta?.content;
+        if (typeof delta === 'string' && delta.length > 0) {
+          content += delta;
+          onDelta(delta);
+        }
+      } catch {
+        // Skip malformed/partial chunk rather than aborting the stream
+      }
+    }
+
+    return { success: true, content, provider: 'openrouter' };
   }
 
   private async streamFromGemini(
@@ -533,6 +616,53 @@ export class APIClient {
     };
   }
 
+  private async sendToOpenRouter(userMessage: string, character: string, extraContext?: string): Promise<APIResponse> {
+    const systemPrompt = this.buildSystemPrompt(character, extraContext);
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.apiKey}`,
+        'HTTP-Referer': 'https://stageego.netlify.app',
+        'X-Title': 'StageEgo',
+      },
+      body: JSON.stringify({
+        model: this.config.model || DEFAULT_MODEL.openrouter,
+        max_tokens: 1024,
+        ...(this.config.temperature !== undefined ? { temperature: this.config.temperature } : {}),
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
+          {
+            role: 'user',
+            content: userMessage,
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorMsg = await parseErrorMessage(response);
+      return {
+        success: false,
+        error: `OpenRouter API Error (${response.status}): ${errorMsg}`,
+        provider: 'openrouter',
+      };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '';
+
+    return {
+      success: true,
+      content,
+      provider: 'openrouter',
+    };
+  }
+
   private async sendToGemini(userMessage: string, character: string, extraContext?: string): Promise<APIResponse> {
     const systemPrompt = this.buildSystemPrompt(character, extraContext);
 
@@ -600,10 +730,17 @@ Keep interactions warm, friendly, and grounded — playful banter, humor, and si
   }
 }
 
-export async function detectAPIProvider(apiKey: string): Promise<'anthropic' | 'openai' | 'gemini' | null> {
+export async function detectAPIProvider(apiKey: string): Promise<'anthropic' | 'openai' | 'gemini' | 'openrouter' | null> {
   // Anthropic keys start with sk-ant-
   if (apiKey.startsWith('sk-ant-')) {
     return 'anthropic';
+  }
+
+  // OpenRouter keys start with sk-or-v1- (or sk-or- more generally) -
+  // checked before the generic sk- OpenAI fallback below, since
+  // OpenRouter's prefix is itself a superset of "sk-".
+  if (apiKey.startsWith('sk-or-')) {
+    return 'openrouter';
   }
 
   // OpenAI keys start with sk-
