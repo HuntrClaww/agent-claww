@@ -143,7 +143,10 @@ async function validateOpenAIKey(apiKey: string): Promise<ValidationResult> {
 async function validateGeminiKey(apiKey: string): Promise<ValidationResult> {
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro?key=${apiKey}`,
+      // Matches the model used in apiClient.ts's sendToGemini/streamFromGemini
+      // - see the comment there for why 'gemini-pro' (removed by Google,
+      // returns 404) was replaced with the 'gemini-flash-latest' alias.
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest?key=${apiKey}`,
       {
         method: 'GET',
       }

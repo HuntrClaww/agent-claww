@@ -4,7 +4,7 @@ import { estimateTokens } from './sessionBudget';
 const DEFAULT_MODEL: Record<APIConfig['provider'], string> = {
   anthropic: 'claude-opus-4-1',
   openai: 'gpt-4o-mini',
-  gemini: 'gemini-pro', // matches the hardcoded model in sendToGemini/streamFromGemini below
+  gemini: 'gemini-flash-latest', // see note at both hardcoded URLs below re: why this replaced 'gemini-pro'
 };
 
 export interface APIConfig {
@@ -381,7 +381,13 @@ export class APIClient {
     const systemPrompt = this.buildSystemPrompt(character, extraContext);
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:streamGenerateContent?alt=sse&key=${this.config.apiKey}`,
+      // 'gemini-pro' was fully removed by Google (returns 404, not just
+      // stale) - confirmed 2026-09-12. Using the 'gemini-flash-latest'
+      // alias instead of a fixed dated model name (e.g. 'gemini-2.5-flash')
+      // deliberately - Google itself repoints that alias forward as models
+      // get deprecated, so this shouldn't need another manual bump next
+      // time a model generation is retired.
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:streamGenerateContent?alt=sse&key=${this.config.apiKey}`,
       {
         method: 'POST',
         signal,
@@ -531,7 +537,8 @@ export class APIClient {
     const systemPrompt = this.buildSystemPrompt(character, extraContext);
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${this.config.apiKey}`,
+      // See streamFromGemini's comment above re: 'gemini-flash-latest'.
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${this.config.apiKey}`,
       {
         method: 'POST',
         headers: {
