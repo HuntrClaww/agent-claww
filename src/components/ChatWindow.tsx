@@ -4,9 +4,10 @@ import HelpHub from './HelpHub';
 import CharacterSelect from './CharacterSelect';
 import CharacterPortrait from './CharacterPortrait';
 import Sidebar from './Sidebar';
-import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX, Mic, MicOff, Square } from 'lucide-react';
+import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX, Mic, MicOff, Square, Search } from 'lucide-react';
 import { APIClient, detectAPIProvider, type ChatTurn } from '../lib/apiClient';
-import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
+import { fetchCharacterInfo, citationTag, type CharacterCandidate } from '../lib/characterFetch';
+import CharacterSearchModal from './CharacterSearchModal';
 import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
 import { loadThread, saveThread, personalityThreadKey, GENERIC_THREAD_KEY, type Message } from '../lib/chatLogStore';
 import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
@@ -122,6 +123,23 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   // Persists for the lifetime of this chat session (cleared on handleNewChat).
   // Prevents re-fetching the same character if the user switches away and back.
   const genericCharacterCache = useRef<Map<string, import('../lib/characterFetch').CharacterInfo | null>>(new Map());
+
+  // Generic Mode character search modal + its floating status line.
+  // The status line reuses the same visual slot as the mic-quality
+  // warning below (grayed-out text just above the input) - it's a
+  // brief "Switching to X..." notice, not a persistent element, and
+  // clears itself a couple seconds after a pick is made.
+  const [showCharacterSearch, setShowCharacterSearch] = useState(false);
+  const [switchNotice, setSwitchNotice] = useState<string | null>(null);
+
+  const handleCharacterSearchSelect = (candidate: CharacterCandidate) => {
+    setShowCharacterSearch(false);
+    const cacheKey = candidate.name.toLowerCase().trim();
+    genericCharacterCache.current.set(cacheKey, candidate);
+    setGenericCharacter(candidate.name);
+    setSwitchNotice(`Switching to ${candidate.name}...`);
+    window.setTimeout(() => setSwitchNotice(null), 2500);
+  };
 
   // Voice Mode: when on, AI responses are read aloud via voiceEngine.
   // Persisted across sessions since it's a user preference, not per-chat state.
@@ -823,12 +841,21 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
             {/* Input Field */}
             <div className="p-4 border-t border-slate-800 bg-gradient-to-t from-slate-900 to-slate-800">
               <div className="max-w-3xl mx-auto flex flex-col gap-1.5">
-                {(micWarning || (isListening && externalMicHint)) && (
+                {(switchNotice || micWarning || (isListening && externalMicHint)) && (
                   <div className="text-xs text-amber-300/80 px-1">
-                    {micWarning ?? `Using ${externalMicHint}`}
+                    {switchNotice ?? micWarning ?? `Using ${externalMicHint}`}
                   </div>
                 )}
                 <div className="flex gap-2">
+                  {activeMode?.kind === 'generic' && (
+                    <button
+                      onClick={() => setShowCharacterSearch(true)}
+                      title="Find a character"
+                      className="glass-surface px-3.5 py-3 rounded-xl text-slate-300 shrink-0"
+                    >
+                      <Search size={18} />
+                    </button>
+                  )}
                   <div className="flex-1 relative">
                     <input
                       type="text"
@@ -891,6 +918,13 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <HelpHub isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      {showCharacterSearch && (
+        <CharacterSearchModal
+          mode="generic"
+          onClose={() => setShowCharacterSearch(false)}
+          onSelect={handleCharacterSearchSelect}
+        />
+      )}
     </div>
   );
 }
