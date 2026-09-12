@@ -41,6 +41,9 @@ export interface SavedCharacter {
   summary?: string;       // fetched or user-provided bio, frozen at creation
   personality?: string;
   background?: string;
+  appearance?: string;    // user-provided only - the auto-search sources don't reliably separate this from summary
+  relationships?: string; // user-provided only - same reason as appearance
+  referenceLink?: string; // optional citation URL the user pasted, shown as-is - NOT auto-fetched (most sites block cross-origin reads from a client-side app; see characterFetch.ts's scope note for which sources CAN be auto-read)
   source?: string;        // e.g. "Fandom", "AniList", "user-provided"
   forkedFrom?: string;    // id of the character this was forked from, if any
   seedContext?: string;   // curated snippets pasted in when forking (capped)
