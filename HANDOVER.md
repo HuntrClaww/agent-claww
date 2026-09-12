@@ -365,6 +365,7 @@ StageEgo already proves this exact pattern in `characterFetch.ts` (try source A 
 | 46 | **UI polish (2/2):** glass/neon refinements | index.css | `.glass-surface` transition now includes `background` (smoother hover), plus `will-change: backdrop-filter, transform` so the browser pre-promotes it to a GPU layer — keeps hover/press smooth with several glass surfaces on screen at once. `@media (prefers-reduced-motion: reduce)` now auto-falls-back the pulsing glow to static, respecting the OS accessibility setting independent of the manual toggle below. |
 | 47 | **"Reduce Visual Effects" toggle** | App.tsx, SettingsModal.tsx, index.css | New Settings > Advanced toggle, **off by default** (full effects run for everyone until someone opts out) — adds `reduce-effects` class to `<html>` via the same event-driven pattern as the existing theme toggle. `html.reduce-effects` CSS rules swap blur for a solid background and disable the glow pulse. Plain-language label/description, not technical jargon, per requirement that this stay easy to find and read. |
 | 48 | **BUG FIX:** stale "AI performance coach" branding | index.html, package.json, App.tsx | CORE_VISION.md claimed this misalignment was "fully corrected" — it wasn't in these three spots (meta description/keywords/title, package.json description, `document.title`). Also what `stageego.netlify.app`'s live page metadata was showing. Caught while reviewing the liquid-glass UI, not the original task — fixed and logged separately per user's "correct accuracy as you go" instruction. |
+| 49 | **BUG FIX:** Known Issue #12, `gemini-pro` deprecated | apiClient.ts, apiValidator.ts | Confirmed via Google's docs + a community bug report that `gemini-pro` was fully removed (404), not just stale. Replaced 3 chat references + the validator ping with the `gemini-flash-latest` alias, chosen over a fixed dated model specifically because the current `gemini-2.5-*` generation itself shuts down Oct 2026. |
 
 ---
 
@@ -373,8 +374,9 @@ StageEgo already proves this exact pattern in `characterFetch.ts` (try source A 
 | # | Issue | Status | File | Fix Required |
 |---|-------|--------|------|-------------|
 | 11 | Netlify deploy credits exhausted (2026-09-11) | **PENDING — waiting on external reset** | N/A (infra) | `stageego.netlify.app` is up on existing "operational" credits, but no new deploys can go out until Netlify credits refresh (expected next month, per Arthur). Workflow while blocked: keep committing/pushing to GitHub as normal; Arthur pulls locally into VS Code (`npm run dev`) to test rather than via the live URL. Do not treat GitHub pushes as "deployed" during this window — HANDOVER.md's completion bar (Section 0, rule 3) is unaffected, this only blocks the *live* Netlify build specifically. |
-| 12 | Gemini model hardcoded to `gemini-pro` | **PENDING — flagged, not yet fixed** | apiClient.ts | Both `sendToGemini` and `streamFromGemini` call `models/gemini-pro:...` unconditionally (ignoring `this.config.model`). `gemini-pro` is an older model name — worth confirming it's still live on the account being tested before assuming Gemini calls will work; may need updating to a current model name (e.g. a `gemini-2.x-flash` variant) once a real key test is possible. Left unchanged for now since it's a behavior-affecting fix, not touched without confirming with Arthur first. |
-| 13 | Gemini key provided 2026-09-11 not yet tested | **PENDING — blocked by sandbox network, confirmed 2026-09-11** | N/A | Both `curl` (bash tool) and `web_fetch` were tried against `generativelanguage.googleapis.com` — the former isn't on this sandbox's egress allowlist, the latter refuses URLs that weren't already fetched/searched earlier in the same conversation. No remaining tool path in this environment can reach Google's API; this is a hard block, not something to keep retrying. Note: key detection logic (`apiClient.ts`'s `detectAPIProvider()`, `apiValidator.ts`'s `validateAPIKey()`) does NOT require the `AIzaSy...` prefix — it's just "not sk-/sk-ant-, length > 30" → Gemini, so Arthur's differently-formatted key (`AQ.Ab8RN6...`, 53 chars, generated from an account with a Google subscription) already routes correctly with no code change needed. What's actually unverified is whether Google's backend accepts this key for the Generative Language API specifically — that can only be confirmed by Arthur testing locally (npm run dev, Settings > Standard Assistant > Test Connection) or by this sandbox's network settings being opened to that domain. Do not paste real API keys into this file or into committed code — this row intentionally omits the actual key value. |
+| 12 | Gemini model hardcoded to `gemini-pro` | **✅ FIXED 2026-09-12** | apiClient.ts, apiValidator.ts | Confirmed `gemini-pro` was fully removed by Google (404, not just stale) via official docs + a matching community bug report. Replaced with the `gemini-flash-latest` alias (not a fixed dated model) across all 3 chat references + the key-validation ping, specifically so the currently-stable `gemini-2.5-*` models' own Oct 2026 shutdown doesn't cause a repeat of this same issue. |
+| 13 | Gemini key provided 2026-09-11 not yet tested | **PENDING — blocked by sandbox network, confirmed 2026-09-11** | N/A | Both `curl` (bash tool) and `web_fetch` were tried against `generativelanguage.googleapis.com` — the former isn't on this sandbox's egress allowlist, the latter refuses URLs that weren't already fetched/searched earlier in the same conversation. No remaining tool path in this environment can reach Google's API; this is a hard block, not something to keep retrying. Note: key detection logic (`apiClient.ts`'s `detectAPIProvider()`, `apiValidator.ts`'s `validateAPIKey()`) does NOT require the `AIzaSy...` prefix — it's just "not sk-/sk-ant-, length > 30" → Gemini, so Arthur's differently-formatted key (`AQ.Ab8RN6...`, 53 chars, generated from an account with a Google subscription) already routes correctly with no code change needed. As of 2026-09-12 the model-name bug (issue #12) that would have caused a false-negative 404 is now fixed, so a local test should isolate purely on key validity. What's actually unverified is whether Google's backend accepts this key for the Generative Language API specifically — that can only be confirmed by Arthur testing locally (npm run dev, Settings > Standard Assistant > Test Connection) or by this sandbox's network settings being opened to that domain. Do not paste real API keys into this file or into committed code — this row intentionally omits the actual key value. |
+| 14 | `avatarGenerate.ts` image model (`gemini-2.5-flash-image`) shuts down Oct 2, 2026 | **PENDING — flagged 2026-09-12, not fixed** | avatarGenerate.ts | Found while researching issue #12. Separate model, separate feature (Phase 8 Avatar Creation) — deliberately left untouched today to stay focused on the chat-model fix. About 3 weeks of runway as of this writing; worth prioritizing before Phase 8 is next picked up. |
 | 1 | Profanity tolerance is decorative | **HANDLED** | apiClient.ts | Fixed. `buildSystemPrompt()` now reads `localStorage.getItem('profanity_filter')`: strict → clean language instruction appended; off → natural profanity allowed; moderate (default) → no instruction, character judgment used. |
 | 2 | Fandom fetch endpoint unverified | **HANDLED** | characterFetch.ts | Fixed endpoint from HTML search page to `/api/v1/Search/List` (actual JSON API). Added `[characterFetch]` prefixed `console.warn` in every catch block and every empty-result branch. Orchestrator logs each step (✓ resolved / ✗ exhausted) so CORS failures are visible in devtools instead of silently swallowed. |
 | 3 | No image compression on upload | **HANDLED** | imageCompress.ts, CharacterSelect.tsx | New `imageCompress.ts`: Canvas compress (resize to 512px, JPEG quality 0.85→0.35). Both portrait and emotion-slot handlers now compress first, only show error if still over cap at minimum quality. |
@@ -429,16 +431,22 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 
 ## 9. Priority Order for Next Session
 
-**2026-09-11 status:** Netlify deploys are blocked on exhausted credits
-(expected back next month) — see Known Issue #11. Work continues via
-GitHub + Arthur testing locally in VS Code (`npm run dev`) instead of
-the live URL. This session shipped the API call logging system
-(engine + viewer UI, Known Issues #12/#13 are unresolved side-notes
-from that work, not blockers to it). **Next session should start by
-checking whether Arthur was able to test the Gemini key locally** —
-if so, read what the Performance Log tab captured; if the key or
-`gemini-pro` model turned out to be the problem, that's Known Issue
-#12/#13 to resolve then.
+**2026-09-12 status:** Netlify deploys remain blocked on exhausted
+credits (Known Issue #11, expected back next month) — work continues
+via GitHub + Arthur testing locally in VS Code (`npm run dev`). The
+API logging system, liquid-glass UI polish, and the `gemini-pro` model
+bug (#12) are all shipped this session. **The Gemini key test (#13) is
+now the cleanest it's going to get** — with #12 fixed, a local test
+should isolate purely on whether Google accepts the key itself, not on
+a false-negative model-name 404. **Next session should start by
+checking whether Arthur ran that test and what the Performance Log tab
+showed.** If it succeeded, Phase 10's remaining checklist (lazy-loading
+media, WebP conversion, Speed Mode) is the natural next block. If it
+failed, read the logged error first before assuming anything.
+
+**Also flagged, not yet acted on:** Known Issue #14 — `avatarGenerate.ts`'s
+image model shuts down Oct 2, 2026. Worth fixing before Phase 8 is next
+touched, even though it wasn't in scope today.
 
 **Phase 6 (Voice & Audio) and Phase 6.5 (Speech Recognition Robustness)
 are both fully built and code-complete. Nothing is half-finished.**
