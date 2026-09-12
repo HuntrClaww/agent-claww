@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2, ImagePlus, X, HelpCircle } from 'lucide-react';
-import { fetchCharacterInfo, citationTag } from '../lib/characterFetch';
+import { fetchCharacterInfo, citationTag, type CharacterCandidate } from '../lib/characterFetch';
+import CharacterSearchModal from './CharacterSearchModal';
 import { createCharacter, listCharacters, deleteCharacter, PORTRAIT_MAX_KB, EMOTION_PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode, type VoiceSettings } from '../lib/characterStore';
 import { compressPortrait } from '../lib/imageCompress';
 import { generateAllEmotionVariants } from '../lib/avatarFilters';
@@ -22,6 +23,20 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [forkFromId, setForkFromId] = useState<string | null>(null);
   const [seedContext, setSeedContext] = useState('');
   const [isFetching, setIsFetching] = useState(false);
+  const [showCharacterSearch, setShowCharacterSearch] = useState(false);
+  const [showManualDetails, setShowManualDetails] = useState(false);
+  const [manualSummary, setManualSummary] = useState('');
+  const [manualPersonality, setManualPersonality] = useState('');
+  const [manualBackground, setManualBackground] = useState('');
+  const [manualAppearance, setManualAppearance] = useState('');
+  const [manualRelationships, setManualRelationships] = useState('');
+  const [referenceLink, setReferenceLink] = useState('');
+  // Set after a search pick, so the person can see exactly what was
+  // found and how confident it was BEFORE committing - directly
+  // answers "does auto-search actually do better than typing it
+  // myself?" by making the found data visible and editable rather
+  // than silently baked in.
+  const [searchResultNote, setSearchResultNote] = useState<string | null>(null);
   const [portraitDataUrl, setPortraitDataUrl] = useState<string | null>(null);
   const [portraitError, setPortraitError] = useState<string | null>(null);
   const [themeColor, setThemeColor] = useState(DEFAULT_THEME_COLOR);
@@ -200,13 +215,40 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
     });
   };
 
+  const handleCharacterSearchSelect = (candidate: CharacterCandidate) => {
+    setShowCharacterSearch(false);
+    setShowManualDetails(true); // reveal the fields so the found data is visible + editable, not silently applied
+    if (!characterName.trim()) setCharacterName(candidate.name);
+    setManualSummary(candidate.summary);
+    setSearchResultNote(
+      `Found via ${candidate.source} (${candidate.confidencePercent}% confidence)` +
+      (candidate.sourceUrl ? ` — ${candidate.sourceUrl}` : '') +
+      '. Review it below, edit anything that looks off, or clear it and type your own.'
+    );
+  };
+
   const handlePersonalityStart = async () => {
     const trimmed = characterName.trim();
     if (!trimmed || isFetching) return;
 
-    setIsFetching(true);
-    const info = await fetchCharacterInfo(trimmed);
-    setIsFetching(false);
+    // If the person searched (searchResultNote set) or typed anything
+    // manually, that's authoritative - no silent fallback fetch. Only
+    // fall back to the old implicit auto-fetch when NONE of the manual
+    // fields were touched at all, so a simple "type a name and go"
+    // flow still works exactly as it always has.
+    const anyManualField = [manualSummary, manualPersonality, manualBackground, manualAppearance, manualRelationships]
+      .some(f => f.trim().length > 0);
+
+    let summary = manualSummary.trim() || undefined;
+    let source = anyManualField || searchResultNote ? (searchResultNote ? searchResultNote.split(' — ')[0].replace('Found via ', 'via ') : 'user-provided') : undefined;
+
+    if (!anyManualField && !searchResultNote) {
+      setIsFetching(true);
+      const info = await fetchCharacterInfo(trimmed);
+      setIsFetching(false);
+      summary = info?.summary;
+      source = info ? citationTag(info) : 'user-provided';
+    }
 
     const hasVoiceSettings = voiceName !== '' || voicePitch !== 1 || voiceRate !== 1;
     const voiceSettings: VoiceSettings | undefined = hasVoiceSettings
@@ -216,8 +258,13 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
     const character = createCharacter({
       name: trimmed,
       behavior,
-      summary: info?.summary,
-      source: info ? citationTag(info) : 'user-provided',
+      summary,
+      personality: manualPersonality.trim() || undefined,
+      background: manualBackground.trim() || undefined,
+      appearance: manualAppearance.trim() || undefined,
+      relationships: manualRelationships.trim() || undefined,
+      referenceLink: referenceLink.trim() || undefined,
+      source,
       forkedFrom: forkFromId || undefined,
       seedContext: forkFromId ? seedContext : undefined,
       portraitUrl: portraitDataUrl || undefined,
@@ -438,6 +485,76 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
             </div>
             {portraitError && (
               <p className="text-[11px] text-red-400 mb-3 -mt-1.5">{portraitError}</p>
+            )}
+
+            {/* Character details: search the web, or type everything yourself.
+                Both feed the same fields below - searching just pre-fills them
+                (visibly, editably) rather than applying anything silently, so
+                it's easy to compare "what the search found" against "what I'd
+                rather write myself". */}
+            <div className="mb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setShowCharacterSearch(true)}
+                  disabled={!characterName.trim()}
+                  className="flex items-center gap-1.5 text-xs font-medium bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Search size={13} /> Search the web for this character
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowManualDetails(v => !v)}
+                  className="text-xs text-slate-500 hover:text-amber-300 transition-colors"
+                >
+                  {showManualDetails ? '\u2212' : '+'} {showManualDetails ? 'Hide' : 'Enter/edit'} details manually
+                </button>
+              </div>
+              {searchResultNote && (
+                <p className="text-[11px] text-teal-300/80 mt-1.5">{searchResultNote}</p>
+              )}
+            </div>
+
+            {showManualDetails && (
+              <div className="mb-4 space-y-3 bg-slate-900/40 border border-slate-700 rounded-lg p-3">
+                <p className="text-[11px] text-slate-500">
+                  Everything here is optional but frozen once you begin (Personality Mode has no take-backs).
+                  Paste in your own research, or edit what a search found above.
+                </p>
+                {[
+                  { label: 'Summary / bio', value: manualSummary, set: setManualSummary },
+                  { label: 'Personality', value: manualPersonality, set: setManualPersonality },
+                  { label: 'Background / history', value: manualBackground, set: setManualBackground },
+                  { label: 'Appearance', value: manualAppearance, set: setManualAppearance },
+                  { label: 'Relationships', value: manualRelationships, set: setManualRelationships },
+                ].map(field => (
+                  <label key={field.label} className="block">
+                    <span className="text-xs font-medium text-slate-500 mb-1 block">{field.label}</span>
+                    <textarea
+                      value={field.value}
+                      onChange={(e) => field.set(e.target.value.slice(0, 4000))}
+                      rows={2}
+                      className="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all resize-y"
+                    />
+                  </label>
+                ))}
+                <label className="block">
+                  <span className="text-xs font-medium text-slate-500 mb-1 block">
+                    Reference link (optional)
+                  </span>
+                  <input
+                    type="text"
+                    value={referenceLink}
+                    onChange={(e) => setReferenceLink(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all"
+                  />
+                  <span className="text-[10px] text-slate-600 mt-1 block">
+                    Shown as a citation only — most sites block being read automatically from the browser,
+                    so paste the actual details above rather than relying on this link alone.
+                  </span>
+                </label>
+              </div>
             )}
 
             {/* Optional per-emotion portrait slots */}
@@ -733,6 +850,15 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
 
       {/* Fork/immutability help popup */}
       {showForkHelp && <HelpPopup topicId="fork-immutability" onClose={() => setShowForkHelp(false)} />}
+
+      {showCharacterSearch && (
+        <CharacterSearchModal
+          mode="personality"
+          onClose={() => setShowCharacterSearch(false)}
+          onSelect={handleCharacterSearchSelect}
+          onManualFallback={() => { setShowCharacterSearch(false); setShowManualDetails(true); }}
+        />
+      )}
     </div>
   );
 }

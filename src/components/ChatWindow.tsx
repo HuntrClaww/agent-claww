@@ -420,7 +420,8 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       // for the portrait panel.
       const saved = activeMode.characterId ? getCharacter(activeMode.characterId) : undefined;
       const bio = saved
-        ? [saved.summary, saved.personality, saved.background].filter(Boolean).join('\n\n')
+        ? [saved.summary, saved.personality, saved.background, saved.appearance, saved.relationships]
+            .filter(Boolean).join('\n\n')
         : undefined;
       const seed = saved?.seedContext
         ? `Carried over from a previous character by the user's own choice:\n${saved.seedContext}`
@@ -550,7 +551,8 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     if (!saved) return [];
     const names = saved.name.split(/\s+/);
     const bioNouns = extractKnownProperNouns(
-      [saved.summary, saved.personality, saved.background].filter(Boolean).join(' ')
+      [saved.summary, saved.personality, saved.background, saved.appearance, saved.relationships]
+        .filter(Boolean).join(' ')
     );
     return [...names, ...bioNouns];
   }, [activeMode]);
