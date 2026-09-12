@@ -366,6 +366,7 @@ StageEgo already proves this exact pattern in `characterFetch.ts` (try source A 
 | 47 | **"Reduce Visual Effects" toggle** | App.tsx, SettingsModal.tsx, index.css | New Settings > Advanced toggle, **off by default** (full effects run for everyone until someone opts out) — adds `reduce-effects` class to `<html>` via the same event-driven pattern as the existing theme toggle. `html.reduce-effects` CSS rules swap blur for a solid background and disable the glow pulse. Plain-language label/description, not technical jargon, per requirement that this stay easy to find and read. |
 | 48 | **BUG FIX:** stale "AI performance coach" branding | index.html, package.json, App.tsx | CORE_VISION.md claimed this misalignment was "fully corrected" — it wasn't in these three spots (meta description/keywords/title, package.json description, `document.title`). Also what `stageego.netlify.app`'s live page metadata was showing. Caught while reviewing the liquid-glass UI, not the original task — fixed and logged separately per user's "correct accuracy as you go" instruction. |
 | 49 | **BUG FIX:** Known Issue #12, `gemini-pro` deprecated | apiClient.ts, apiValidator.ts | Confirmed via Google's docs + a community bug report that `gemini-pro` was fully removed (404), not just stale. Replaced 3 chat references + the validator ping with the `gemini-flash-latest` alias, chosen over a fixed dated model specifically because the current `gemini-2.5-*` generation itself shuts down Oct 2026. |
+| 50 | **NEW FEATURE:** OpenRouter as a 4th AI provider | apiClient.ts, apiLogger.ts, apiValidator.ts, SettingsModal.tsx, helpContent.ts | User-requested (2026-09-12) — OpenRouter tends to be more reliably reachable than Gemini and routes to many models (including free) through one key. Full `sendToOpenRouter`/`streamFromOpenRouter` pair mirroring the existing OpenAI methods (OpenRouter's API is OpenAI-compatible). Default model is `openrouter/free` (OpenRouter's own auto-selecting free-model router) rather than a pinned model ID, for the same reason as the `gemini-flash-latest` fix — individual free model slugs get rotated/deprecated often. Key detection (`sk-or-` prefix) added to both `detectAPIProvider()` and `validateAPIKey()`, checked ahead of the generic `sk-` → OpenAI fallback. Validated via OpenRouter's dedicated `/auth/key` endpoint. Settings key label and the in-app "Getting an API key" help popup both updated with OpenRouter's setup steps. **Not added:** a manual model-override field — OpenRouter's real value is model choice, and this shipped as a "paste key and go" change per what was actually asked; worth adding later if a specific model is wanted instead of the free router. |
 
 ---
 
@@ -434,17 +435,32 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 **2026-09-12 status:** Netlify deploys remain blocked on exhausted
 credits (Known Issue #11, expected back next month) — work continues
 via GitHub + Arthur testing locally in VS Code (`npm run dev`). The
-API logging system, liquid-glass UI polish, and the `gemini-pro` model
-bug (#12) are all shipped this session. **The Gemini key test (#13) is
-now the cleanest it's going to get** — with #12 fixed, a local test
-should isolate purely on whether Google accepts the key itself, not on
-a false-negative model-name 404. **Next session should start by
-checking whether Arthur ran that test and what the Performance Log tab
-showed.** If it succeeded, Phase 10's remaining checklist (lazy-loading
-media, WebP conversion, Speed Mode) is the natural next block. If it
-failed, read the logged error first before assuming anything.
+API logging system, liquid-glass UI polish, the `gemini-pro` fix, and
+OpenRouter as a 4th provider are all shipped this session. **Arthur
+now has two provider options ready to test locally: Gemini (key
+already provided, model bug fixed) and OpenRouter (key not yet
+provided as of this writing) — OpenRouter is expected to be the more
+reliable of the two to get working.** Next session should start by
+checking which (if either) he tested successfully, and read what the
+Performance Log tab showed for it.
 
-**Also flagged, not yet acted on:** Known Issue #14 — `avatarGenerate.ts`'s
+**Open decision, not yet made — surfaced 2026-09-12, needs Arthur's
+input before acting:** he asked whether Python would help make voice/
+TTS "more robust." Answered but not decided: this project has no
+backend at all (Phase 9 deferred), voice runs entirely on the
+browser's native Web Speech API, and Python can't run in a browser —
+using it would mean standing up a real backend server, a much bigger
+architectural change, not a tune-up. The middle-ground option raised:
+swap browser TTS for a cloud TTS API called directly from the browser
+(e.g. ElevenLabs, Google Cloud TTS) — no backend needed, same pattern
+as the existing AI providers, would fix native TTS's real weakness
+(quality varies a lot by OS/browser). Three paths on the table: (1)
+keep free browser TTS, just polish what exists, (2) add a paid cloud
+TTS provider, (3) explore a Python/backend architecture (biggest
+lift). Don't assume an answer — ask Arthur which direction before
+touching Phase 6 again.
+
+Also flagged, not yet acted on: Known Issue #14 — `avatarGenerate.ts`'s
 image model shuts down Oct 2, 2026. Worth fixing before Phase 8 is next
 touched, even though it wasn't in scope today.
 
