@@ -198,7 +198,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
                 <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">API Configuration</h3>
                 <div>
                   <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-2">
-                    Your API Key (OpenAI / Anthropic / Google Gemini)
+                    Your API Key (OpenAI / Anthropic / Google Gemini / OpenRouter)
                     <button
                       type="button"
                       onClick={() => setShowKeyHelp(true)}

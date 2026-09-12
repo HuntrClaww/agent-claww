@@ -34,9 +34,10 @@ export const HELP_TOPICS: HelpTopic[] = [
       'Google Gemini (has a free tier — good starting point): go to aistudio.google.com, sign in, click "Get API key", create one, and paste it in.',
       "Anthropic (Claude): go to console.anthropic.com, open API Keys, click Create Key, and paste it in. Requires billing set up — no free tier.",
       'OpenAI: go to platform.openai.com, open API keys from the account menu, click "Create new secret key" and copy it immediately (only shown once), and paste it in. Requires billing set up — no free tier.',
+      'OpenRouter (routes to many models, including free ones — often the most reliable to get working): go to openrouter.ai, sign in, open Keys from the account menu, click "Create Key", and paste it in. No billing needed to start — it defaults to a free model.',
     ],
     note: 'Having trouble? Double-check you copied the whole key with no extra spaces, and that you\'re pasting it into this app\'s key field, not a provider\'s own chat interface.',
-    keywords: ['gemini', 'anthropic', 'openai', 'claude', 'key', 'provider', 'settings'],
+    keywords: ['gemini', 'anthropic', 'openai', 'claude', 'openrouter', 'key', 'provider', 'settings'],
   },
   {
     id: 'voice-studio',
