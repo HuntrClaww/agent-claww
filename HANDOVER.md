@@ -366,7 +366,8 @@ StageEgo already proves this exact pattern in `characterFetch.ts` (try source A 
 | 47 | **"Reduce Visual Effects" toggle** | App.tsx, SettingsModal.tsx, index.css | New Settings > Advanced toggle, **off by default** (full effects run for everyone until someone opts out) — adds `reduce-effects` class to `<html>` via the same event-driven pattern as the existing theme toggle. `html.reduce-effects` CSS rules swap blur for a solid background and disable the glow pulse. Plain-language label/description, not technical jargon, per requirement that this stay easy to find and read. |
 | 48 | **BUG FIX:** stale "AI performance coach" branding | index.html, package.json, App.tsx | CORE_VISION.md claimed this misalignment was "fully corrected" — it wasn't in these three spots (meta description/keywords/title, package.json description, `document.title`). Also what `stageego.netlify.app`'s live page metadata was showing. Caught while reviewing the liquid-glass UI, not the original task — fixed and logged separately per user's "correct accuracy as you go" instruction. |
 | 49 | **BUG FIX:** Known Issue #12, `gemini-pro` deprecated | apiClient.ts, apiValidator.ts | Confirmed via Google's docs + a community bug report that `gemini-pro` was fully removed (404), not just stale. Replaced 3 chat references + the validator ping with the `gemini-flash-latest` alias, chosen over a fixed dated model specifically because the current `gemini-2.5-*` generation itself shuts down Oct 2026. |
-| 50 | **NEW FEATURE:** OpenRouter as a 4th AI provider | apiClient.ts, apiLogger.ts, apiValidator.ts, SettingsModal.tsx, helpContent.ts | User-requested (2026-09-12) — OpenRouter tends to be more reliably reachable than Gemini and routes to many models (including free) through one key. Full `sendToOpenRouter`/`streamFromOpenRouter` pair mirroring the existing OpenAI methods (OpenRouter's API is OpenAI-compatible). Default model is `openrouter/free` (OpenRouter's own auto-selecting free-model router) rather than a pinned model ID, for the same reason as the `gemini-flash-latest` fix — individual free model slugs get rotated/deprecated often. Key detection (`sk-or-` prefix) added to both `detectAPIProvider()` and `validateAPIKey()`, checked ahead of the generic `sk-` → OpenAI fallback. Validated via OpenRouter's dedicated `/auth/key` endpoint. Settings key label and the in-app "Getting an API key" help popup both updated with OpenRouter's setup steps. **Not added:** a manual model-override field — OpenRouter's real value is model choice, and this shipped as a "paste key and go" change per what was actually asked; worth adding later if a specific model is wanted instead of the free router. |
+| 50 | **NEW FEATURE:** OpenRouter as a 4th AI provider | apiClient.ts, apiLogger.ts, apiValidator.ts, SettingsModal.tsx, helpContent.ts | User-requested (2026-09-12) — OpenRouter tends to be more reliably reachable than Gemini and routes to many models (including free) through one key. Full `sendToOpenRouter`/`streamFromOpenRouter` pair mirroring the existing OpenAI methods (OpenRouter's API is OpenAI-compatible). Default model is `openrouter/free` (OpenRouter's own auto-selecting free-model router) rather than a pinned model ID, for the same reason as the `gemini-flash-latest` fix — individual free model slugs get rotated/deprecated often. Key detection (`sk-or-` prefix) added to both `detectAPIProvider()` and `validateAPIKey()`, checked ahead of the generic `sk-` → OpenAI fallback. Validated via OpenRouter's dedicated `/auth/key` endpoint. Settings key label and the in-app "Getting an API key" help popup both updated with OpenRouter's setup steps. **Not added:** a manual model-override field — OpenRouter's real value is model choice, and this shipped as a "paste key and go" change per what was actually asked; worth adding later if a specific model is wanted instead of the free router. **✅ CONFIRMED WORKING — Arthur tested locally 2026-09-12 with his own OpenRouter key, reported it "perfect."** |
+| 51 | **NEW FEATURE:** Character search system - multi-source, confidence-scored, disambiguation-ready | characterFetch.ts, CharacterSearchModal.tsx, ChatWindow.tsx, CharacterSelect.tsx, characterStore.ts | User-requested (2026-09-12), directly motivated by a real failure: auto-search mismatched Chino from "Is the Order a Rabbit?" (a lesser-known character) with a wrong personality/background. Rebuilt in 5 commits: (1) `characterFetch.ts` foundation - added Wikipedia as a 4th CORS-friendly source (fills the live-action/real-person gap the other 3 anime/game-wiki sources don't cover), thumbnails on all 4 sources, a documented 0-100 confidencePercent heuristic (source tier + name-match quality + content richness + thumbnail presence, capped at 95), and `searchCharacterCandidates()` which queries all 4 concurrently and returns EVERY hit as a separate candidate rather than merging same-named results - deliberately, since merging two different fictional characters sharing a name would be actively wrong, not just imprecise. (2) `CharacterSearchModal.tsx` - shared search UI, live per-source progress narration (genuine, not a canned animation), results as pickable cards with thumbnail/source/confidence%/snippet. Personality Mode gets a stricter <50% confidence gate (explicit "use anyway or enter manually" choice) since that mode has no take-backs; Generic Mode has no gate, staying quick/reversible. (3) Wired into Generic Mode: search-icon button next to the chat input, floating "Switching to X..." status reusing the existing mic-warning text slot. (4) `characterStore.ts`: added `appearance`, `relationships`, `referenceLink` fields - manual-entry-only, since the 4 fetch sources return one bio blob, not neatly separated categories. (5) Wired into Personality Mode: "Search the web" button + "Enter/edit details manually" collapsible section (5 textareas + reference link) BOTH feed the same fields, and a search pick pre-fills + reveals them for review/editing rather than applying silently - directly answers "does search actually do better than typing it myself?" by making it visible and comparable per-character. **Bug caught and fixed while wiring this:** the AI-facing bio context (ChatWindow.tsx, both the actual chat prompt and the word-flagging allowlist) only ever read summary/personality/background - appearance/relationships would have been saved but silently never reached the AI without this fix. |
 
 ---
 
@@ -378,6 +379,10 @@ StageEgo already proves this exact pattern in `characterFetch.ts` (try source A 
 | 12 | Gemini model hardcoded to `gemini-pro` | **✅ FIXED 2026-09-12** | apiClient.ts, apiValidator.ts | Confirmed `gemini-pro` was fully removed by Google (404, not just stale) via official docs + a matching community bug report. Replaced with the `gemini-flash-latest` alias (not a fixed dated model) across all 3 chat references + the key-validation ping, specifically so the currently-stable `gemini-2.5-*` models' own Oct 2026 shutdown doesn't cause a repeat of this same issue. |
 | 13 | Gemini key provided 2026-09-11 not yet tested | **PENDING — blocked by sandbox network, confirmed 2026-09-11** | N/A | Both `curl` (bash tool) and `web_fetch` were tried against `generativelanguage.googleapis.com` — the former isn't on this sandbox's egress allowlist, the latter refuses URLs that weren't already fetched/searched earlier in the same conversation. No remaining tool path in this environment can reach Google's API; this is a hard block, not something to keep retrying. Note: key detection logic (`apiClient.ts`'s `detectAPIProvider()`, `apiValidator.ts`'s `validateAPIKey()`) does NOT require the `AIzaSy...` prefix — it's just "not sk-/sk-ant-, length > 30" → Gemini, so Arthur's differently-formatted key (`AQ.Ab8RN6...`, 53 chars, generated from an account with a Google subscription) already routes correctly with no code change needed. As of 2026-09-12 the model-name bug (issue #12) that would have caused a false-negative 404 is now fixed, so a local test should isolate purely on key validity. What's actually unverified is whether Google's backend accepts this key for the Generative Language API specifically — that can only be confirmed by Arthur testing locally (npm run dev, Settings > Standard Assistant > Test Connection) or by this sandbox's network settings being opened to that domain. Do not paste real API keys into this file or into committed code — this row intentionally omits the actual key value. |
 | 14 | `avatarGenerate.ts` image model (`gemini-2.5-flash-image`) shuts down Oct 2, 2026 | **PENDING — flagged 2026-09-12, not fixed** | avatarGenerate.ts | Found while researching issue #12. Separate model, separate feature (Phase 8 Avatar Creation) — deliberately left untouched today to stay focused on the chat-model fix. About 3 weeks of runway as of this writing; worth prioritizing before Phase 8 is next picked up. |
+| 15 | Liquid-glass UI (issue #45/#46 above) reportedly not visible in Arthur's local test | **UNRESOLVED — reported 2026-09-12, not investigated** | Unknown — likely environment, not code | Arthur pulled from GitHub and ran locally, said the glass/glow styling "felt as if the changes were not made." The code IS committed and correct (verified directly against the files both when it shipped and again this session). Candidate causes, none confirmed: a stale `npm run dev` process that didn't pick up the pull, browser cache, a `git pull` that didn't actually fast-forward, or the effect being subtle enough (small glass-surface accents, not a whole-UI change) that it didn't register against expecting something more dramatic. **Likely superseded** by issue #18 below (full UI redesign from scratch) rather than worth debugging in isolation — noted here so the discrepancy isn't lost. |
+| 16 | Speech-to-text cuts off ~5-10 seconds before the person finishes speaking | **PENDING — reported 2026-09-12, not fixed** | voiceEngine.ts | Real bug, not a mic-hardware issue on Arthur's end (the existing mic-quality warning correctly told him about a separate muffled-mic issue elsewhere, so that part works as intended — this is specifically recognition cutting off early, likely an overly aggressive silence-detection/timeout in the SpeechRecognition config). Not investigated yet — deprioritized behind the UI redesign per Arthur's own stated sequencing, but flagged clearly so it isn't forgotten. |
+| 17 | No per-character (or per-Generic-Mode) settings exist — only global app settings | **PENDING — reported 2026-09-12, not fixed** | SettingsModal.tsx (global only) | Arthur noticed there's nowhere to configure something specific to one created character or to Generic Mode specifically — everything lives in the single global Settings modal. Likely folds naturally into the UI redesign (issue #18) rather than being a separate bolt-on fix — worth deciding placement during that planning pass rather than patching the current Settings modal now. |
+| 18 | **MAJOR:** Full UI/UX redesign requested — planning phase, not started | **IN PLANNING as of 2026-09-12** | Everything visual | See new Section 10 below for full detail. Arthur wants the entire UI rebuilt from scratch, benchmarked against Claude.ai's own chat interface for cleanliness/modernity, with StageEgo's actual feature set as the differentiator layered on top — not a copy of Claude's UI, a comparable quality bar. Explicitly wants a full navigational/structural plan (user journey from app load through every screen) BEFORE any implementation starts. An existing `VISUAL_NOVEL_UI_SPEC.md` (24K, fairly detailed - portraits, themes, settings panel, responsive breakpoints) already exists in the repo and appears to have gone largely unimplemented — whether to revise/build on it or discard it entirely is an open question flagged directly to Arthur, not decided unilaterally. |
 | 1 | Profanity tolerance is decorative | **HANDLED** | apiClient.ts | Fixed. `buildSystemPrompt()` now reads `localStorage.getItem('profanity_filter')`: strict → clean language instruction appended; off → natural profanity allowed; moderate (default) → no instruction, character judgment used. |
 | 2 | Fandom fetch endpoint unverified | **HANDLED** | characterFetch.ts | Fixed endpoint from HTML search page to `/api/v1/Search/List` (actual JSON API). Added `[characterFetch]` prefixed `console.warn` in every catch block and every empty-result branch. Orchestrator logs each step (✓ resolved / ✗ exhausted) so CORS failures are visible in devtools instead of silently swallowed. |
 | 3 | No image compression on upload | **HANDLED** | imageCompress.ts, CharacterSelect.tsx | New `imageCompress.ts`: Canvas compress (resize to 512px, JPEG quality 0.85→0.35). Both portrait and emotion-slot handlers now compress first, only show error if still over cap at minimum quality. |
@@ -432,37 +437,39 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 
 ## 9. Priority Order for Next Session
 
-**2026-09-12 status:** Netlify deploys remain blocked on exhausted
-credits (Known Issue #11, expected back next month) — work continues
-via GitHub + Arthur testing locally in VS Code (`npm run dev`). The
-API logging system, liquid-glass UI polish, the `gemini-pro` fix, and
-OpenRouter as a 4th provider are all shipped this session. **Arthur
-now has two provider options ready to test locally: Gemini (key
-already provided, model bug fixed) and OpenRouter (key not yet
-provided as of this writing) — OpenRouter is expected to be the more
-reliable of the two to get working.** Next session should start by
-checking which (if either) he tested successfully, and read what the
-Performance Log tab showed for it.
+**2026-09-12 status (updated, later in the same session):** OpenRouter
+is **confirmed working** — Arthur tested it locally himself and called
+it "perfect." Gemini's key is still untested by him as of this
+writing (he tested OpenRouter first). Netlify deploys remain blocked
+on exhausted credits (Known Issue #11, expected back next month) —
+work continues via GitHub + Arthur testing locally in VS Code
+(`npm run dev`).
 
-**Open decision, not yet made — surfaced 2026-09-12, needs Arthur's
-input before acting:** he asked whether Python would help make voice/
-TTS "more robust." Answered but not decided: this project has no
-backend at all (Phase 9 deferred), voice runs entirely on the
-browser's native Web Speech API, and Python can't run in a browser —
-using it would mean standing up a real backend server, a much bigger
-architectural change, not a tune-up. The middle-ground option raised:
-swap browser TTS for a cloud TTS API called directly from the browser
-(e.g. ElevenLabs, Google Cloud TTS) — no backend needed, same pattern
-as the existing AI providers, would fix native TTS's real weakness
-(quality varies a lot by OS/browser). Three paths on the table: (1)
-keep free browser TTS, just polish what exists, (2) add a paid cloud
-TTS provider, (3) explore a Python/backend architecture (biggest
-lift). Don't assume an answer — ask Arthur which direction before
-touching Phase 6 again.
+**Everything below this point is now second priority.** Arthur was
+explicit: **the full UI/UX redesign (Known Issue #18, detailed in new
+Section 10 below) is the top priority going forward**, ahead of Phase
+6.5 real-device testing, Phase 8 Avatar Creation, and the open voice/
+TTS architecture decision (still undecided — see the paragraph below,
+unchanged from before). Do not start Phase 8 or real-device testing
+next session without first checking whether the UI planning
+conversation in Section 10 has concluded — jumping ahead of it would
+go directly against explicit sequencing instructions.
 
-Also flagged, not yet acted on: Known Issue #14 — `avatarGenerate.ts`'s
-image model shuts down Oct 2, 2026. Worth fixing before Phase 8 is next
-touched, even though it wasn't in scope today.
+**Open decision, still not made — voice/TTS direction:** Arthur was
+asked to choose between (1) keep free browser TTS and just polish it,
+(2) add a paid cloud TTS provider (e.g. ElevenLabs), or (3) explore a
+Python backend. His answer was garbled in transcription (dictated) —
+something like keeping free TTS while *also* somehow merging in a
+Python backend and ElevenLabs into "one single tool" — genuinely
+unclear, and he immediately said to put TTS aside again ("for the
+second time or third time") to focus on the character search system
+instead. **Do not assume an answer from that garbled reply** — ask
+him to clarify plainly before touching Phase 6/TTS architecture again.
+
+Also flagged, not yet acted on: Known Issue #14 (avatar image model
+deprecation), #16 (STT cuts off early), #17 (no per-character
+settings) — all deprioritized behind the UI redesign per Arthur's own
+sequencing, not forgotten.
 
 **Phase 6 (Voice & Audio) and Phase 6.5 (Speech Recognition Robustness)
 are both fully built and code-complete. Nothing is half-finished.**
@@ -477,7 +484,92 @@ Here's exactly what's done and what's next:
 - [x] Phase 6.5 Part 1: mixed-language/unusual-word flagging (flagUnusualTokens, inline UI, click-to-lookup) — see Section 3 for full detail
 - [x] Phase 6.5 Part 2: mic signal quality preflight + external device detection (checkMicSignalQuality, device watcher, UI wiring) — see Section 3 for full detail
 
-**Next session should start with:**
-1. **Real-device testing** — this sandbox cannot test physical hardware, so nothing in Phase 6 or 6.5 has been verified on an actual phone/mic yet. This now covers MORE ground than before Phase 6.5 was added: test on iOS Safari (mic input, priming fix, AND the new mic-quality-check permission flow — two separate getUserMedia-adjacent calls now happen around mic use), Android Chrome, desktop Firefox (weakest Web Speech API support of the major browsers), and specifically test with a Bluetooth headset connected/disconnected mid-session to verify the device-change watcher fires correctly. Fix whatever real-device testing turns up.
-2. Once that testing is clean → **Phase 8, Avatar creation & customization tool** (explicitly deferred until Phase 6 was done — see Section 8 above for full confirmed scope: custom image upload → 2D avatar, animated or multi-frame for emotions, free-tier AI image tooling still needs research before any build starts).
+**Once the Section 10 planning conversation has concluded, resume here:**
+1. **Real-device testing** — this sandbox cannot test physical hardware, so nothing in Phase 6 or 6.5 has been verified on an actual phone/mic yet. This now covers MORE ground than before Phase 6.5 was added: test on iOS Safari (mic input, priming fix, AND the new mic-quality-check permission flow — two separate getUserMedia-adjacent calls now happen around mic use), Android Chrome, desktop Firefox (weakest Web Speech API support of the major browsers), and specifically test with a Bluetooth headset connected/disconnected mid-session to verify the device-change watcher fires correctly. Fix whatever real-device testing turns up, including Known Issue #16 (STT early cutoff) found this session.
+2. Once that testing is clean → **Phase 8, Avatar creation & customization tool** (explicitly deferred until Phase 6 was done — see Section 8 above for full confirmed scope: custom image upload → 2D avatar, animated or multi-frame for emotions, free-tier AI image tooling still needs research before any build starts). Fix Known Issue #14 (deprecated image model) as part of, or just before, this phase.
 3. Phase 7 (Professional Coaching Modules) remains further out, after Phase 8.
+
+---
+
+## 10. UI/UX Redesign — Planning Phase (started 2026-09-12)
+
+**Status: planning conversation in progress, NO implementation has
+started.** Arthur was explicit that a full navigational/structural
+plan must exist and be agreed on BEFORE any redesign code is written
+— this section exists so that plan has somewhere durable to live as
+it develops, rather than being lost between chat sessions.
+
+**What prompted this:** Arthur said the current UI "did not change
+from what it looked like when I last saw it probably a month ago,"
+compared it unfavorably to Claude.ai's own chat interface, and asked
+for a complete rebuild "from scratch." He does NOT want a copy of
+Claude's UI — the comparison is about cleanliness/modernity as a
+quality bar, with StageEgo's actual feature set (character switching,
+Personality Mode's lock-in, voice, portraits, theming) as what
+differentiates it. He explicitly used the word "2020-and-plus" to
+describe what he wants to move away from.
+
+**What he asked for, in order:**
+1. A full structural/navigational document: how a user moves through
+   the entire app, starting from page load — auto-login if an account
+   is linked, or a choice between signing in vs. continuing as guest
+   for a new user — through to every major screen and how each is
+   reached. This is a document/diagram to agree on, not code.
+2. Only after that structure is agreed → the actual visual redesign:
+   colors, layout, component placement, styling, everything "worthy of
+   today" rather than dated.
+
+**`VISUAL_NOVEL_UI_SPEC.md` — read in full 2026-09-12, assessment below.**
+This ~24K doc specs a portrait-centric Visual Novel-style layout:
+character portrait as a persistent sidebar element with emotion-based
+image swapping, an emoji+label "emotion badge" overlay, a 5-color
+theme system, and a settings panel with VN-specific options (portrait
+size, chat style, emotion display mode). Cross-checked against the
+real codebase: its CORE technical patterns already exist in some form
+— `emotionDetect.ts`, `CharacterPortrait.tsx`, the theme toggle in
+`App.tsx`, and `emotionPortraits`/`themeColor` on `SavedCharacter` all
+correspond to concepts in this doc. So this is NOT an ignored spec —
+it's mostly a description of what got built, likely written partway
+through or just written up afterward, and only stale in its literal
+CSS/class-name details (the real components almost certainly don't
+use these exact class names — they're Tailwind-utility-based).
+
+**The real, sharper question this raises for Arthur (surface this
+directly, don't guess):** the VN spec's whole premise — a persistent
+character-portrait panel with an emoji emotion badge — is a
+*different visual language* than the "closer to your own chat style"
+benchmark Arthur set (Claude.ai's interface has no persistent avatar
+sidebar or emoji status badges; presence is expressed far more
+minimally). These aren't automatically incompatible, but reconciling
+them is a real design decision, not a formality: does Arthur want to
+(a) keep the portrait-centric VN layout but modernize its visual
+execution, (b) shrink character presence down to something more
+minimal (small avatar + name, no big sidebar/badge) and lean on other
+features to differentiate from a plain chat UI, or (c) something in
+between? Whichever the new session decides, it isn't unilateral to
+pick without asking.
+
+**Related open items that likely fold into this redesign** (don't
+solve separately unless Arthur says otherwise): Known Issue #17 (no
+per-character settings), and several items already sitting in Section
+7 (Future Design Ideas) that overlap directly — "Character creation
+loading states" (partially achieved already, this session, via
+CharacterSearchModal's live per-source progress narration — worth
+noting to Arthur as a preview of the direction), "Right-hand character
+info drawer," and "Character 'Extra Data' field" (now partially
+covered by this session's appearance/relationships/referenceLink
+fields, but the UI redesign may want to present this differently).
+
+**Do not start writing redesign code, even small pieces, until the
+structural plan in point 1 above has been explicitly agreed on with
+Arthur.** This is a direct, repeated instruction from him, not a
+guideline to weigh against convenience.
+
+**Session handoff note (2026-09-12):** this whole planning phase is
+being handed to a fresh chat session (a long conversation was getting
+unwieldy) via a new preamble prompt Arthur will paste in. That new
+session's entire priority is this Section 10 — the structural plan
+first, then the visual redesign (colors, layout, icons, logo, menus,
+nav bars, everything). If you're reading this as that new session:
+start by proposing the navigational structure document, and put the
+VN-spec question above to Arthur before assuming an answer either way.
