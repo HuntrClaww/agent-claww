@@ -5,6 +5,18 @@ export interface ValidationResult {
   error?: string;
 }
 
+// Shared with apiClient.ts's own provider calls - reads an error body as
+// text first and only tries JSON on top of that, so a non-JSON error body
+// (gateway timeout page, proxy/CORS failure, empty body) can't throw here.
+// Each validate*Key() below used to call response.json() directly on a
+// non-ok response; a malformed body would throw, land in that function's
+// outer catch, and report "failed to connect / check your internet
+// connection" even when the real issue was a bad key with an odd error
+// page - misleading, not a crash, but worth fixing since apiClient.ts
+// already fixed this exact bug class (Known Issue, Completed Items #141)
+// and this sibling file was never included in that pass.
+import { parseErrorMessage } from './apiClient';
+
 export async function validateAPIKey(apiKey: string): Promise<ValidationResult> {
   if (!apiKey || !apiKey.trim()) {
     return {
@@ -87,12 +99,12 @@ async function validateAnthropicKey(apiKey: string): Promise<ValidationResult> {
       };
     }
 
-    const errorData = await response.json();
+    const errorMsg = await parseErrorMessage(response);
     return {
       isValid: false,
       provider: 'anthropic',
-      message: `❌ Anthropic API Error: ${errorData.error?.message || 'Unknown error'}`,
-      error: errorData.error?.message,
+      message: `❌ Anthropic API Error: ${errorMsg}`,
+      error: errorMsg,
     };
   } catch (err) {
     return {
@@ -130,12 +142,12 @@ async function validateOpenAIKey(apiKey: string): Promise<ValidationResult> {
       };
     }
 
-    const errorData = await response.json();
+    const errorMsg = await parseErrorMessage(response);
     return {
       isValid: false,
       provider: 'openai',
-      message: `❌ OpenAI API Error: ${errorData.error?.message || 'Unknown error'}`,
-      error: errorData.error?.message,
+      message: `❌ OpenAI API Error: ${errorMsg}`,
+      error: errorMsg,
     };
   } catch (err) {
     return {
@@ -177,12 +189,12 @@ async function validateOpenRouterKey(apiKey: string): Promise<ValidationResult> 
       };
     }
 
-    const errorData = await response.json();
+    const errorMsg = await parseErrorMessage(response);
     return {
       isValid: false,
       provider: 'openrouter',
-      message: `❌ OpenRouter API Error: ${errorData.error?.message || 'Unknown error'}`,
-      error: errorData.error?.message,
+      message: `❌ OpenRouter API Error: ${errorMsg}`,
+      error: errorMsg,
     };
   } catch (err) {
     return {
@@ -223,12 +235,12 @@ async function validateGeminiKey(apiKey: string): Promise<ValidationResult> {
       };
     }
 
-    const errorData = await response.json();
+    const errorMsg = await parseErrorMessage(response);
     return {
       isValid: false,
       provider: 'gemini',
-      message: `❌ Google Gemini API Error: ${errorData.error?.message || 'Unknown error'}`,
-      error: errorData.error?.message,
+      message: `❌ Google Gemini API Error: ${errorMsg}`,
+      error: errorMsg,
     };
   } catch (err) {
     return {

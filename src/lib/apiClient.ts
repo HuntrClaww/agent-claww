@@ -65,7 +65,7 @@ const RATE_LIMIT_MESSAGE = "You're sending messages faster than this API key's r
  * This never throws: falls back to the raw text, or a generic
  * message if even that fails.
  */
-async function parseErrorMessage(response: Response): Promise<string> {
+export async function parseErrorMessage(response: Response): Promise<string> {
   let raw = '';
   try {
     raw = await response.text();
