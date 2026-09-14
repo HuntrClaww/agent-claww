@@ -24,6 +24,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
   const [characterCount, setCharacterCount] = useState(0);
   const [clearConfirm, setClearConfirm] = useState(false);
   const [showKeyHelp, setShowKeyHelp] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Diagnostics / performance log state
   const [logStats, setLogStats] = useState<LogStats | null>(null);
@@ -51,6 +52,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
       setClearConfirm(false);
       setClearLogsConfirm(false);
       setActiveTab('general');
+      setSaveError(null);
     }
   }, [isOpen]);
 
@@ -123,10 +125,27 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
   };
 
   const handleSave = () => {
-    localStorage.setItem('user_api_key', apiKey);
-    localStorage.setItem('profanity_filter', profanityFilter);
-    localStorage.setItem('ai_temperature', String(temperature));
-    localStorage.setItem('reduce_visual_effects', String(reduceEffects));
+    try {
+      localStorage.setItem('user_api_key', apiKey);
+      localStorage.setItem('profanity_filter', profanityFilter);
+      localStorage.setItem('ai_temperature', String(temperature));
+      localStorage.setItem('reduce_visual_effects', String(reduceEffects));
+    } catch (err) {
+      // Same unguarded-setItem gap found and fixed in UserProfileModal.tsx
+      // and characterStore.ts's writeAll() on 2026-09-10 - this handler
+      // was missed in that pass. Most likely QuotaExceededError (localStorage
+      // full, e.g. from several character portraits); previously this threw
+      // straight out of the handler with zero feedback, so Save would appear
+      // to do nothing. Surfaced via the same banner pattern used elsewhere.
+      setSaveError(
+        err instanceof DOMException && err.name === 'QuotaExceededError'
+          ? 'Storage is full — try removing an old character to free up space, then save again.'
+          : 'Failed to save settings — please try again.'
+      );
+      return;
+    }
+
+    setSaveError(null);
 
     // Trigger refresh in other components
     window.dispatchEvent(new Event('profileUpdated'));
@@ -412,7 +431,10 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
+        <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-end gap-3">
+          {saveError && (
+            <p className="text-xs text-red-400 mr-auto">{saveError}</p>
+          )}
           <button 
             onClick={onClose}
             className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
