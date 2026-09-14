@@ -5,8 +5,8 @@ export default function Auth({ onLogin, onGuest }: { onLogin: () => void, onGues
                 <div className="text-center">
                     <div className="text-5xl mb-3">🎭</div>
                     <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-2">StageEgo</h1>
-                    <p className="text-slate-300 font-medium mb-2">Your AI Performance Coach</p>
-                    <p className="text-slate-400 text-sm">Master your presence. Refine your delivery. Elevate your performance.</p>
+                    <p className="text-slate-300 font-medium mb-2">Chat with any character, your way</p>
+                    <p className="text-slate-400 text-sm">Switch freely between characters in Generic Mode, or lock in for an immersive one-on-one in Personality Mode.</p>
                 </div>
 
                 <div className="space-y-3">
@@ -38,7 +38,7 @@ export default function Auth({ onLogin, onGuest }: { onLogin: () => void, onGues
                 </button>
 
                 <p className="text-xs text-slate-500 text-center pt-4 border-t border-slate-700">
-                    StageEgo: Performance coaching powered by AI. No data stored on external servers in guest mode.
+                    StageEgo: An AI character chatbot. No data stored on external servers in guest mode.
                 </p>
             </div>
         </div>
