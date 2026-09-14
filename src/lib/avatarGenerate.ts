@@ -29,7 +29,14 @@ export interface AvatarGenerationResult {
   source: 'gemini' | 'canvas-filter';
 }
 
-const GEMINI_IMAGE_MODEL = 'gemini-2.5-flash-image';
+// Google's deprecations page (ai.google.dev/gemini-api/docs/deprecations)
+// lists gemini-2.5-flash-image shutting down October 2, 2026, with
+// gemini-3.1-flash-image-preview as the named official replacement -
+// confirmed 2026-09-14 (Known Issue #14). It's still a "-preview" model,
+// not a stable/"-latest" alias (no such alias exists for image models as
+// of this check, unlike the chat models' gemini-flash-latest), so it
+// could shift again later - worth re-checking if this ever throws a 404.
+const GEMINI_IMAGE_MODEL = 'gemini-3.1-flash-image-preview';
 
 /**
  * Splits a data URL into its mime type and base64 payload, as required
