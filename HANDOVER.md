@@ -379,10 +379,10 @@ StageEgo already proves this exact pattern in `characterFetch.ts` (try source A 
 | 12 | Gemini model hardcoded to `gemini-pro` | **✅ FIXED 2026-09-12** | apiClient.ts, apiValidator.ts | Confirmed `gemini-pro` was fully removed by Google (404, not just stale) via official docs + a matching community bug report. Replaced with the `gemini-flash-latest` alias (not a fixed dated model) across all 3 chat references + the key-validation ping, specifically so the currently-stable `gemini-2.5-*` models' own Oct 2026 shutdown doesn't cause a repeat of this same issue. |
 | 13 | Gemini key provided 2026-09-11 not yet tested | **PENDING — blocked by sandbox network, confirmed 2026-09-11** | N/A | Both `curl` (bash tool) and `web_fetch` were tried against `generativelanguage.googleapis.com` — the former isn't on this sandbox's egress allowlist, the latter refuses URLs that weren't already fetched/searched earlier in the same conversation. No remaining tool path in this environment can reach Google's API; this is a hard block, not something to keep retrying. Note: key detection logic (`apiClient.ts`'s `detectAPIProvider()`, `apiValidator.ts`'s `validateAPIKey()`) does NOT require the `AIzaSy...` prefix — it's just "not sk-/sk-ant-, length > 30" → Gemini, so Arthur's differently-formatted key (`AQ.Ab8RN6...`, 53 chars, generated from an account with a Google subscription) already routes correctly with no code change needed. As of 2026-09-12 the model-name bug (issue #12) that would have caused a false-negative 404 is now fixed, so a local test should isolate purely on key validity. What's actually unverified is whether Google's backend accepts this key for the Generative Language API specifically — that can only be confirmed by Arthur testing locally (npm run dev, Settings > Standard Assistant > Test Connection) or by this sandbox's network settings being opened to that domain. Do not paste real API keys into this file or into committed code — this row intentionally omits the actual key value. |
 | 14 | `avatarGenerate.ts` image model (`gemini-2.5-flash-image`) shuts down Oct 2, 2026 | **PENDING — flagged 2026-09-12, not fixed** | avatarGenerate.ts | Found while researching issue #12. Separate model, separate feature (Phase 8 Avatar Creation) — deliberately left untouched today to stay focused on the chat-model fix. About 3 weeks of runway as of this writing; worth prioritizing before Phase 8 is next picked up. |
-| 15 | Liquid-glass UI (issue #45/#46 above) reportedly not visible in Arthur's local test | **UNRESOLVED — reported 2026-09-12, not investigated** | Unknown — likely environment, not code | Arthur pulled from GitHub and ran locally, said the glass/glow styling "felt as if the changes were not made." The code IS committed and correct (verified directly against the files both when it shipped and again this session). Candidate causes, none confirmed: a stale `npm run dev` process that didn't pick up the pull, browser cache, a `git pull` that didn't actually fast-forward, or the effect being subtle enough (small glass-surface accents, not a whole-UI change) that it didn't register against expecting something more dramatic. **Likely superseded** by issue #18 below (full UI redesign from scratch) rather than worth debugging in isolation — noted here so the discrepancy isn't lost. |
+| 15 | Liquid-glass UI (issue #45/#46 above) reportedly not visible in Arthur's local test | **LIKELY EXPLAINED, not a separate fix — 2026-09-14** | Unknown — likely environment, not code | Arthur pulled from GitHub and ran locally, said the glass/glow styling "felt as if the changes were not made." The code IS committed and correct. Leading theory as of this session: the existing `.glass-surface`/`.glow-*` utilities were only applied to buttons and voice/audio elements, a small enough scope that it's easy to miss if expecting a whole-UI change — not necessarily a stale-build/cache issue after all. The 2026-09-14 redesign commit extends this same utility to the character portrait sidebar (ambient glow) as a first test of this theory; worth asking Arthur directly whether it reads as more visible once that's pushed and pulled, rather than assuming it's resolved. |
 | 16 | Speech-to-text cuts off ~5-10 seconds before the person finishes speaking | **PENDING — reported 2026-09-12, not fixed** | voiceEngine.ts | Real bug, not a mic-hardware issue on Arthur's end (the existing mic-quality warning correctly told him about a separate muffled-mic issue elsewhere, so that part works as intended — this is specifically recognition cutting off early, likely an overly aggressive silence-detection/timeout in the SpeechRecognition config). Not investigated yet — deprioritized behind the UI redesign per Arthur's own stated sequencing, but flagged clearly so it isn't forgotten. |
 | 17 | No per-character (or per-Generic-Mode) settings exist — only global app settings | **PENDING — reported 2026-09-12, not fixed** | SettingsModal.tsx (global only) | Arthur noticed there's nowhere to configure something specific to one created character or to Generic Mode specifically — everything lives in the single global Settings modal. Likely folds naturally into the UI redesign (issue #18) rather than being a separate bolt-on fix — worth deciding placement during that planning pass rather than patching the current Settings modal now. |
-| 18 | **MAJOR:** Full UI/UX redesign requested — planning phase, not started | **IN PLANNING as of 2026-09-12** | Everything visual | See new Section 10 below for full detail. Arthur wants the entire UI rebuilt from scratch, benchmarked against Claude.ai's own chat interface for cleanliness/modernity, with StageEgo's actual feature set as the differentiator layered on top — not a copy of Claude's UI, a comparable quality bar. Explicitly wants a full navigational/structural plan (user journey from app load through every screen) BEFORE any implementation starts. An existing `VISUAL_NOVEL_UI_SPEC.md` (24K, fairly detailed - portraits, themes, settings panel, responsive breakpoints) already exists in the repo and appears to have gone largely unimplemented — whether to revise/build on it or discard it entirely is an open question flagged directly to Arthur, not decided unilaterally. |
+| 18 | **MAJOR:** Full UI/UX redesign requested | **IN PROGRESS as of 2026-09-14 — first commit made locally, NOT YET PUSHED (needs a fresh PAT)** | Everything visual | See Section 10 for full detail and the resolved design direction (VN cutout + circular header ID avatar + glass/neon, colors and backgrounds left as user-selectable, not yet built). Arthur directed the new session to skip the structural/navigational plan for now and start on visual style/theme directly — that plan is deferred, not cancelled. |
 | 1 | Profanity tolerance is decorative | **HANDLED** | apiClient.ts | Fixed. `buildSystemPrompt()` now reads `localStorage.getItem('profanity_filter')`: strict → clean language instruction appended; off → natural profanity allowed; moderate (default) → no instruction, character judgment used. |
 | 2 | Fandom fetch endpoint unverified | **HANDLED** | characterFetch.ts | Fixed endpoint from HTML search page to `/api/v1/Search/List` (actual JSON API). Added `[characterFetch]` prefixed `console.warn` in every catch block and every empty-result branch. Orchestrator logs each step (✓ resolved / ✗ exhausted) so CORS failures are visible in devtools instead of silently swallowed. |
 | 3 | No image compression on upload | **HANDLED** | imageCompress.ts, CharacterSelect.tsx | New `imageCompress.ts`: Canvas compress (resize to 512px, JPEG quality 0.85→0.35). Both portrait and emotion-slot handlers now compress first, only show error if still over cap at minimum quality. |
@@ -493,11 +493,14 @@ Here's exactly what's done and what's next:
 
 ## 10. UI/UX Redesign — Planning Phase (started 2026-09-12)
 
-**Status: planning conversation in progress, NO implementation has
-started.** Arthur was explicit that a full navigational/structural
-plan must exist and be agreed on BEFORE any redesign code is written
-— this section exists so that plan has somewhere durable to live as
-it develops, rather than being lost between chat sessions.
+**Status: implementation started 2026-09-14.** Arthur, speaking
+directly to the new session, explicitly said to skip the structural/
+navigational plan for now and go straight to the visual style/theme
+redesign. This is a live, direct override of the "no code before the
+plan" rule further down this section — given in-session by Arthur
+himself, not a lapse by whoever picks this up next. The structural/
+navigational plan is still outstanding; pick it up once Arthur wants
+to circle back to it, don't assume it's been dropped for good.
 
 **What prompted this:** Arthur said the current UI "did not change
 from what it looked like when I last saw it probably a month ago,"
@@ -534,20 +537,47 @@ through or just written up afterward, and only stale in its literal
 CSS/class-name details (the real components almost certainly don't
 use these exact class names — they're Tailwind-utility-based).
 
-**The real, sharper question this raises for Arthur (surface this
-directly, don't guess):** the VN spec's whole premise — a persistent
-character-portrait panel with an emoji emotion badge — is a
-*different visual language* than the "closer to your own chat style"
-benchmark Arthur set (Claude.ai's interface has no persistent avatar
-sidebar or emoji status badges; presence is expressed far more
-minimally). These aren't automatically incompatible, but reconciling
-them is a real design decision, not a formality: does Arthur want to
-(a) keep the portrait-centric VN layout but modernize its visual
-execution, (b) shrink character presence down to something more
-minimal (small avatar + name, no big sidebar/badge) and lean on other
-features to differentiate from a plain chat UI, or (c) something in
-between? Whichever the new session decides, it isn't unilateral to
-pick without asking.
+**RESOLVED 2026-09-14** — Arthur answered the VN-cutout vs. clean-chat
+question directly (his answer was dictated/garbled; cleaned up below,
+but re-confirm specifics with him if anything here seems off):
+- Keep the VN portrait, but as a true **cutout**: no card/background
+  box behind it, image rendered uncropped (not cropped-to-fill) so a
+  transparent-background portrait reads as a figure standing directly
+  against the app's own background rather than a framed photo. This
+  only works when the uploaded art itself has a transparent
+  background — StageEgo does not run background removal on uploaded
+  images, and Arthur should know that going in.
+- Separately, add a **small circular avatar in the chat header itself**
+  — an ordinary chat-app-style profile picture, cropped to fill the
+  circle, purely for at-a-glance identification. Distinct purpose from
+  the big cutout, in his words: "for identification, that's all."
+- Overall style: liquid glass + neon-light accents on side panels,
+  possibly with animation "on the sideboards" (Arthur wasn't sure
+  himself whether icon animation is feasible — treat as a stretch, not
+  a commitment). Reuse/extend the existing `.glass-surface` /
+  `.glow-*` utilities already in `index.css` rather than inventing a
+  new system — they're real and working, just narrowly applied so far
+  (buttons + voice/audio elements only), which is the likely
+  explanation for Known Issue #15 (Arthur not seeing glass styling
+  locally: it's there, just easy to miss at that scope).
+- **Colors: deliberately left open by Arthur, not fixed.** He wants an
+  advanced option letting each user pick their own colors — described
+  as something like a spectrum/color-mesh picker — applied to both
+  chat-bar styling and background images. Not yet built; scope this as
+  its own feature, not a small add-on to the cutout/glass work.
+- **Backgrounds:** users should also be able to choose their own
+  background images. Not yet built.
+- **Desktop vs. mobile:** Arthur wants desktop and mobile to be able to
+  hold different saved appearance settings under the same account,
+  detected via user agent. Important nuance for whoever picks this up:
+  everything today is localStorage only (no account-level sync — see
+  Section 8), so desktop and mobile *already* have fully independent
+  settings for free, simply by being different browsers/storage. This
+  only becomes a real feature once appearance settings are synced to
+  an account (Phase 9, currently deferred) — at that point the sync
+  logic needs to deliberately keep a per-device-type value rather than
+  one shared value; it is not something that needs new user-agent
+  detection code today.
 
 **Related open items that likely fold into this redesign** (don't
 solve separately unless Arthur says otherwise): Known Issue #17 (no
@@ -559,6 +589,23 @@ noting to Arthur as a preview of the direction), "Right-hand character
 info drawer," and "Character 'Extra Data' field" (now partially
 covered by this session's appearance/relationships/referenceLink
 fields, but the UI redesign may want to present this differently).
+
+**Progress log:**
+- 2026-09-14: First redesign commit made locally (typecheck + build
+  both pass) — `CharacterPortrait.tsx` reworked into the cutout
+  treatment described above (no card/border/crop, floating glass name
+  + emotion chips); `ChatWindow.tsx` gained an ambient theme-colored
+  glow behind the sidebar cutout (reusing `--character-accent`) and a
+  small circular header avatar (real portrait in Personality Mode,
+  fetched thumbnail in Generic Mode, initial as fallback) in both the
+  mobile and desktop headers. **NOT YET PUSHED** — blocked on a fresh
+  PAT from Arthur (the one in the session preamble was a placeholder,
+  never actually filled in). Per Rule 3 above, do not mark this
+  HANDLED until a push is confirmed.
+- Still not started: the user-selectable color/theme picker,
+  background image selection, and any account-level device-aware
+  settings sync (see nuance above — not urgent while everything is
+  localStorage-only).
 
 **Do not start writing redesign code, even small pieces, until the
 structural plan in point 1 above has been explicitly agreed on with
