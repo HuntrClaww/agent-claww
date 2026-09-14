@@ -118,6 +118,10 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
   // Generic Mode only: which character the AI is currently embodying
   const [genericCharacter, setGenericCharacter] = useState<string | null>(null);
+  // Generic Mode only: thumbnail for the currently-embodied character, if
+  // the fetch that resolved it returned one. Powers the small circular
+  // header avatar (identification only, separate from the VN cutout panel).
+  const [genericCharacterThumb, setGenericCharacterThumb] = useState<string | null>(null);
 
   // Generic Mode session cache: maps normalised character name → fetched CharacterInfo.
   // Persists for the lifetime of this chat session (cleared on handleNewChat).
@@ -137,6 +141,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     const cacheKey = candidate.name.toLowerCase().trim();
     genericCharacterCache.current.set(cacheKey, candidate);
     setGenericCharacter(candidate.name);
+    setGenericCharacterThumb(candidate.thumbnailUrl || null);
     setSwitchNotice(`Switching to ${candidate.name}...`);
     window.setTimeout(() => setSwitchNotice(null), 2500);
   };
@@ -339,6 +344,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     setSessionTokenEstimate(0);
     setActiveMode(null);
     setGenericCharacter(null);
+    setGenericCharacterThumb(null);
     genericCharacterCache.current.clear();
     stopSpeaking();
     stopListening();
@@ -413,6 +419,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
           character = switchTo; // fall back to model's own knowledge, no citation
         }
         setGenericCharacter(character);
+        setGenericCharacterThumb(info?.thumbnailUrl || null);
       }
     } else if (activeMode?.kind === 'personality') {
       // Personality Mode: send the character's stored bio (if any), any
@@ -640,6 +647,24 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
       ? getCharacter(activeMode.characterId)?.themeColor
       : undefined;
 
+  // Small circular avatar for the chat header - identification only, not
+  // the immersive VN cutout. Personality Mode uses the real portrait for
+  // the current emotion; Generic Mode uses whatever thumbnail the last
+  // character fetch returned (may be none, e.g. for an unresolved name).
+  const headerAvatarUrl = (() => {
+    if (activeMode?.kind === 'personality' && activeMode.characterId) {
+      const savedChar = getCharacter(activeMode.characterId);
+      return savedChar ? resolvePortraitForEmotion(savedChar, currentEmotion) : undefined;
+    }
+    if (activeMode?.kind === 'generic') {
+      return genericCharacterThumb || undefined;
+    }
+    return undefined;
+  })();
+  const headerAvatarInitial = (
+    activeMode?.kind === 'personality' ? activeMode.characterName?.[0] : genericCharacter?.[0]
+  )?.toUpperCase() || (activeMode?.kind === 'personality' ? 'C' : 'A');
+
   return (
     <div className="flex h-screen bg-slate-900 text-slate-100 font-sans w-full overflow-hidden">
       <Sidebar 
@@ -660,6 +685,19 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
           <button onClick={() => setIsSidebarOpen(true)} className="text-slate-300 hover:text-white mr-4">
             <Menu size={24} />
           </button>
+          {activeMode && (
+            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 mr-2.5 ring-1 ring-white/10">
+              {headerAvatarUrl ? (
+                <img src={headerAvatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className={`w-full h-full flex items-center justify-center text-xs font-bold ${
+                  activeMode.kind === 'personality' ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-slate-900' : 'bg-gradient-to-br from-cyan-500 to-teal-600 text-slate-900'
+                }`}>
+                  {headerAvatarInitial}
+                </div>
+              )}
+            </div>
+          )}
           <ModeTitle mode={activeMode} genericCharacter={genericCharacter} className="flex-1" />
           <div className="flex items-center gap-2 text-xs">
             {isVoiceSupported() && activeMode && (
@@ -681,6 +719,17 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
         {/* Desktop Header (only shown once a mode is active) */}
         {activeMode && (
           <div className="hidden md:flex items-center px-6 py-3.5 bg-slate-800/60 border-b border-slate-700/80 backdrop-blur-sm">
+            <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 mr-3 ring-1 ring-white/10">
+              {headerAvatarUrl ? (
+                <img src={headerAvatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className={`w-full h-full flex items-center justify-center text-sm font-bold ${
+                  activeMode.kind === 'personality' ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-slate-900' : 'bg-gradient-to-br from-cyan-500 to-teal-600 text-slate-900'
+                }`}>
+                  {headerAvatarInitial}
+                </div>
+              )}
+            </div>
             <ModeTitle mode={activeMode} genericCharacter={genericCharacter} className="flex-1" />
             <div className="flex items-center gap-3 text-xs text-slate-400">
               {isVoiceSupported() && (
@@ -736,12 +785,22 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
             {activeMode.kind === 'personality' && (() => {
               const savedChar = activeMode.characterId ? getCharacter(activeMode.characterId) : undefined;
               return (
-                <div className="hidden md:block w-64 shrink-0 p-4 border-r border-slate-800">
-                  <CharacterPortrait
-                    characterName={activeMode.characterName || 'Character'}
-                    emotion={currentEmotion}
-                    portraitUrl={savedChar ? resolvePortraitForEmotion(savedChar, currentEmotion) : undefined}
+                <div className="hidden md:block w-64 shrink-0 relative overflow-hidden border-r border-slate-800/70">
+                  {/* Ambient glow behind the cutout, tinted with the character's
+                      theme color (falls back to teal) - the "neon sideboard"
+                      treatment agreed 2026-09-14, layered under the portrait
+                      rather than boxing it. */}
+                  <div
+                    className="absolute inset-0 opacity-25 blur-3xl pointer-events-none"
+                    style={{ background: 'radial-gradient(ellipse 70% 55% at 50% 15%, var(--character-accent, #2dd4bf), transparent 70%)' }}
                   />
+                  <div className="relative h-full p-4">
+                    <CharacterPortrait
+                      characterName={activeMode.characterName || 'Character'}
+                      emotion={currentEmotion}
+                      portraitUrl={savedChar ? resolvePortraitForEmotion(savedChar, currentEmotion) : undefined}
+                    />
+                  </div>
                 </div>
               );
             })()}
