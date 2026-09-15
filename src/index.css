@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* App-wide accent theme (Settings > Appearance, lib/themePresets.ts).
+   These are the fallback values used before JS has run once, or by any
+   surface that references the variable without its own fallback -
+   App.tsx overwrites both on load and on every Settings save. */
+:root {
+    --user-accent: #14b8a6;
+    --user-accent-secondary: #06b6d4;
+}
+
 body {
     background-color: #0f172a;
 }

@@ -792,7 +792,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                       rather than boxing it. */}
                   <div
                     className="absolute inset-0 opacity-25 blur-3xl pointer-events-none"
-                    style={{ background: 'radial-gradient(ellipse 70% 55% at 50% 15%, var(--character-accent, #2dd4bf), transparent 70%)' }}
+                    style={{ background: 'radial-gradient(ellipse 70% 55% at 50% 15%, var(--character-accent, var(--user-accent)), transparent 70%)' }}
                   />
                   <div className="relative h-full p-4">
                     <CharacterPortrait
@@ -832,12 +832,23 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                           : (genericCharacter?.[0] || 'A').toUpperCase()}
                     </div>
 
-                    {/* Message Bubble */}
+                    {/* Message Bubble - user bubbles use the app-wide
+                        accent theme (Settings > Appearance); the AI/
+                        character border uses that character's own color
+                        when set, falling back to the same app theme
+                        otherwise (e.g. Generic Mode has no character
+                        color of its own). */}
                     <div
-                      style={msg.role === 'ai' && activeThemeColor ? { borderLeft: `3px solid ${activeThemeColor}` } : undefined}
+                      style={
+                        msg.role === 'user'
+                          ? { background: 'linear-gradient(135deg, var(--user-accent), var(--user-accent-secondary))' }
+                          : msg.role === 'ai'
+                            ? { borderLeft: `3px solid ${activeThemeColor || 'var(--user-accent)'}` }
+                            : undefined
+                      }
                       className={`p-4 rounded-2xl max-w-[80%] transition-all duration-200 ${
                         msg.role === 'user' 
-                          ? 'bg-gradient-to-br from-teal-600 to-teal-700 text-white rounded-tr-sm shadow-md hover:shadow-lg' 
+                          ? 'text-white rounded-tr-sm shadow-md hover:shadow-lg' 
                           : 'bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-600 text-slate-100 rounded-tl-sm shadow-md hover:shadow-lg backdrop-blur-sm'
                       }`}
                     >
@@ -958,8 +969,8 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                     <button
                       onClick={handleSend}
                       disabled={!inputText.trim()}
-                      style={activeThemeColor ? { background: activeThemeColor } : undefined}
-                      className={`glass-surface ${activeThemeColor ? '' : 'bg-gradient-to-br from-teal-600/80 to-teal-700/80'} disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium disabled:hover:shadow-none`}
+                      style={{ background: activeThemeColor || 'var(--user-accent)' }}
+                      className="glass-surface disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium disabled:hover:shadow-none"
                     >
                       Send
                     </button>

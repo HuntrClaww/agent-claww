@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, AlertCircle, Zap, Settings2, Bot, Users, SlidersHorizontal, Trash2, HelpCircle, Activity, Download } from 'lucide-react';
+import { CheckCircle, AlertCircle, Zap, Settings2, Bot, Users, SlidersHorizontal, Trash2, HelpCircle, Activity, Download, Palette } from 'lucide-react';
 import HelpPopup from './HelpPopup';
 import { validateAPIKey } from '../lib/apiValidator';
 import { listCharacters, deleteCharacter } from '../lib/characterStore';
 import { getRecentLogs, getLogStats, exportLogsAsJSON, clearAllLogs, type APILogEntry, type LogStats } from '../lib/apiLogger';
+import { THEME_PRESETS, type ThemeChoice, getSavedThemeChoice, getSavedCustomColors, saveThemeChoice } from '../lib/themePresets';
 
-type SettingsTab = 'general' | 'assistant' | 'characters' | 'advanced' | 'diagnostics';
+type SettingsTab = 'general' | 'appearance' | 'assistant' | 'characters' | 'advanced' | 'diagnostics';
 
 const TABS: { id: SettingsTab; label: string; icon: typeof Settings2 }[] = [
   { id: 'general', label: 'General', icon: Settings2 },
+  { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'assistant', label: 'Standard Assistant', icon: Bot },
   { id: 'characters', label: 'Character Management', icon: Users },
   { id: 'advanced', label: 'Advanced', icon: SlidersHorizontal },
@@ -25,6 +27,9 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
   const [clearConfirm, setClearConfirm] = useState(false);
   const [showKeyHelp, setShowKeyHelp] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [themeChoice, setThemeChoice] = useState<ThemeChoice>('teal');
+  const [customPrimary, setCustomPrimary] = useState('#14b8a6');
+  const [customSecondary, setCustomSecondary] = useState('#06b6d4');
 
   // Diagnostics / performance log state
   const [logStats, setLogStats] = useState<LogStats | null>(null);
@@ -53,6 +58,10 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
       setClearLogsConfirm(false);
       setActiveTab('general');
       setSaveError(null);
+      setThemeChoice(getSavedThemeChoice());
+      const savedCustom = getSavedCustomColors();
+      setCustomPrimary(savedCustom.primary);
+      setCustomSecondary(savedCustom.secondary);
     }
   }, [isOpen]);
 
@@ -130,6 +139,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
       localStorage.setItem('profanity_filter', profanityFilter);
       localStorage.setItem('ai_temperature', String(temperature));
       localStorage.setItem('reduce_visual_effects', String(reduceEffects));
+      saveThemeChoice(themeChoice, { primary: customPrimary, secondary: customSecondary });
     } catch (err) {
       // Same unguarded-setItem gap found and fixed in UserProfileModal.tsx
       // and characterStore.ts's writeAll() on 2026-09-10 - this handler
@@ -209,6 +219,86 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
                     {clearConfirm ? 'Click again to confirm — this cannot be undone' : 'Clear all characters'}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'appearance' && (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">Accent Theme</h3>
+                  <p className="text-xs text-slate-500 mb-4">
+                    Colors the send button, message accents, and character glow throughout the app. A character's own color (set when creating them) still takes priority over this for that character's chat.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {(Object.keys(THEME_PRESETS) as (keyof typeof THEME_PRESETS)[]).map((id) => {
+                      const preset = THEME_PRESETS[id];
+                      const isActive = themeChoice === id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setThemeChoice(id)}
+                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors text-left ${
+                            isActive ? 'border-white/40 bg-white/5' : 'border-slate-700 hover:border-slate-600'
+                          }`}
+                        >
+                          <span
+                            className="w-6 h-6 rounded-full shrink-0 ring-1 ring-white/10"
+                            style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }}
+                          />
+                          <span className="text-sm text-slate-200">{preset.name}</span>
+                          {isActive && <CheckCircle size={14} className="ml-auto text-teal-400 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setThemeChoice('custom')}
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors text-left ${
+                        themeChoice === 'custom' ? 'border-white/40 bg-white/5' : 'border-slate-700 hover:border-slate-600'
+                      }`}
+                    >
+                      <span
+                        className="w-6 h-6 rounded-full shrink-0 ring-1 ring-white/10"
+                        style={{ background: `linear-gradient(135deg, ${customPrimary}, ${customSecondary})` }}
+                      />
+                      <span className="text-sm text-slate-200">Custom</span>
+                      {themeChoice === 'custom' && <CheckCircle size={14} className="ml-auto text-teal-400 shrink-0" />}
+                    </button>
+                  </div>
+                </div>
+
+                {themeChoice === 'custom' && (
+                  <div className="pt-2 border-t border-slate-700 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-slate-300">Primary color</label>
+                      <input
+                        type="color"
+                        value={customPrimary}
+                        onChange={(e) => setCustomPrimary(e.target.value)}
+                        className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
+                        aria-label="Custom primary accent color"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-slate-300">Secondary color</label>
+                      <input
+                        type="color"
+                        value={customSecondary}
+                        onChange={(e) => setCustomSecondary(e.target.value)}
+                        className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
+                        aria-label="Custom secondary accent color"
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Your browser's own color picker opens here — a full spectrum, not just a swatch list.
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-xs text-slate-600 pt-2 border-t border-slate-700">
+                  Background and layout theming aren't part of this yet — accent colors only, for now.
+                </p>
               </div>
             )}
 

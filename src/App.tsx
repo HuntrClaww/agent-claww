@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Auth from './components/Auth';
 import ChatWindow from './components/ChatWindow';
+import { applyThemeColors } from './lib/themePresets';
 
 function App() {
   const [sessionState, setSessionState] = useState<'loggedOut' | 'guest' | 'loggedIn'>('loggedOut');
@@ -61,6 +62,20 @@ function App() {
     return () => window.removeEventListener('profileUpdated', applyVisualEffects);
   }, []);
   // ------------------------------
+
+  // --- APP-WIDE ACCENT THEME (Settings > Appearance) ---
+  // Presets + custom picker from lib/themePresets.ts, applied as two CSS
+  // custom properties everything else can read (with a hardcoded-teal
+  // fallback for any surface that hasn't opted in yet). Same
+  // apply-on-load + reapply-on-'profileUpdated' pattern as the dark/light
+  // toggle above, since Settings' Save button already dispatches that
+  // event once for everything that changed.
+  useEffect(() => {
+    applyThemeColors();
+    window.addEventListener('profileUpdated', applyThemeColors);
+    return () => window.removeEventListener('profileUpdated', applyThemeColors);
+  }, []);
+  // -------------------------------------------------------
 
   if (sessionState === 'loggedOut') {
     return (
