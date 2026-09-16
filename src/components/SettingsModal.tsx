@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, AlertCircle, Zap, Settings2, Bot, Users, SlidersHorizontal, Trash2, HelpCircle, Activity, Download, Palette } from 'lucide-react';
+import { CheckCircle, AlertCircle, Zap, Settings2, Bot, Users, SlidersHorizontal, Trash2, HelpCircle, Activity, Download, Palette, Layers, Sparkles, Waves } from 'lucide-react';
+import { Section, Row, Segmented, Select, Slider, SwatchRow } from './SettingsControls';
 import HelpPopup from './HelpPopup';
 import { validateAPIKey } from '../lib/apiValidator';
 import { listCharacters, deleteCharacter } from '../lib/characterStore';
@@ -238,177 +239,163 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
             )}
 
             {activeTab === 'appearance' && (
-              <div className="space-y-6">
-                {/* Live preview — applies settings to the document as they
-                    change so the whole app behind the modal updates, rather
-                    than making people save-and-guess. Reverted on Cancel. */}
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">Theme Mode</h3>
-                  <p className="text-xs text-slate-500 mb-3">Changes preview instantly — Cancel puts it back.</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {THEME_MODES.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => updateAppearance({ mode: m.id })}
-                        className={`px-3 py-2.5 rounded-xl border text-left transition-colors ${
-                          appearance.mode === m.id ? 'opt-selected' : 'border-slate-700 hover:border-slate-600'
-                        }`}
-                      >
-                        <span className="block text-sm text-slate-200">{m.label}</span>
-                        <span className="block text-[11px] text-slate-500 leading-tight mt-0.5">{m.hint}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">Accent Color</h3>
-                  <p className="text-xs text-slate-500 mb-3">
-                    Drives buttons, message accents, and the background wash. A character's own color still wins in their chat.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {(Object.keys(THEME_PRESETS) as ThemePresetId[]).map((id) => {
-                      const preset = THEME_PRESETS[id];
-                      return (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => updateAppearance({ accent: id })}
-                          className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors text-left ${
-                            appearance.accent === id ? 'opt-selected' : 'border-slate-700 hover:border-slate-600'
-                          }`}
-                        >
-                          <span
-                            className="w-6 h-6 rounded-full shrink-0 ring-1 ring-white/10"
-                            style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }}
-                          />
-                          <span className="text-sm text-slate-200">{preset.name}</span>
-                          {appearance.accent === id && <CheckCircle size={14} className="ml-auto text-teal-400 shrink-0" />}
-                        </button>
-                      );
-                    })}
-                    <button
-                      type="button"
-                      onClick={() => updateAppearance({ accent: 'custom' })}
-                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors text-left ${
-                        appearance.accent === 'custom' ? 'opt-selected' : 'border-slate-700 hover:border-slate-600'
-                      }`}
-                    >
-                      <span
-                        className="w-6 h-6 rounded-full shrink-0 ring-1 ring-white/10"
-                        style={{ background: `linear-gradient(135deg, ${appearance.customPrimary}, ${appearance.customSecondary})` }}
-                      />
-                      <span className="text-sm text-slate-200">Custom</span>
-                      {appearance.accent === 'custom' && <CheckCircle size={14} className="ml-auto text-teal-400 shrink-0" />}
-                    </button>
-                  </div>
-
-                  {appearance.accent === 'custom' && (
-                    <div className="mt-3 space-y-2.5 pl-1">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm text-slate-300">Primary</label>
-                        <input
-                          type="color"
-                          value={appearance.customPrimary}
-                          onChange={(e) => updateAppearance({ customPrimary: e.target.value })}
-                          className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
-                          aria-label="Custom primary accent color"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm text-slate-300">Secondary</label>
-                        <input
-                          type="color"
-                          value={appearance.customSecondary}
-                          onChange={(e) => updateAppearance({ customSecondary: e.target.value })}
-                          className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
-                          aria-label="Custom secondary accent color"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">Background</h3>
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    {BACKGROUND_STYLES.map((b) => (
-                      <button
-                        key={b.id}
-                        type="button"
-                        onClick={() => updateAppearance({ background: b.id })}
-                        className={`px-3 py-2.5 rounded-xl border text-left transition-colors ${
-                          appearance.background === b.id ? 'opt-selected' : 'border-slate-700 hover:border-slate-600'
-                        }`}
-                      >
-                        <span className="block text-sm text-slate-200">{b.label}</span>
-                        <span className="block text-[11px] text-slate-500 leading-tight mt-0.5">{b.hint}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  <SliderRow
-                    label="Saturation"
-                    value={appearance.saturation}
-                    min={50} max={200} step={5} unit="%"
-                    onChange={(v) => updateAppearance({ saturation: v })}
-                  />
-                  <SliderRow
-                    label="Contrast"
-                    value={appearance.contrast}
-                    min={80} max={130} step={1} unit="%"
-                    onChange={(v) => updateAppearance({ contrast: v })}
-                  />
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-3">Glass</h3>
-                  <SliderRow
-                    label="Blur"
-                    hint="How frosted panels look — 0 is clear glass"
-                    value={appearance.blur}
-                    min={0} max={40} step={1} unit="px"
-                    onChange={(v) => updateAppearance({ blur: v })}
-                  />
-                  <SliderRow
-                    label="Sheen"
-                    hint="Strength of the reflective highlight and sweep"
-                    value={appearance.glass}
-                    min={0} max={150} step={5} unit="%"
-                    onChange={(v) => updateAppearance({ glass: v })}
-                  />
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">Motion</h3>
-                  <p className="text-xs text-slate-500 mb-3">
-                    Your device's system-level "reduce motion" setting still overrides this.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {MOTION_STYLES.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => updateAppearance({ motion: m.id })}
-                        className={`px-3 py-2.5 rounded-xl border text-left transition-colors ${
-                          appearance.motion === m.id ? 'opt-selected' : 'border-slate-700 hover:border-slate-600'
-                        }`}
-                      >
-                        <span className="block text-sm text-slate-200">{m.label}</span>
-                        <span className="block text-[11px] text-slate-500 leading-tight mt-0.5">{m.hint}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => updateAppearance(DEFAULT_APPEARANCE)}
-                  className="text-xs text-slate-400 hover:text-slate-200 underline underline-offset-2"
+              <div className="-mt-1">
+                <Section
+                  title="THEME"
+                  hint="Changes preview instantly — Cancel puts it back"
+                  icon={<Palette size={15} />}
                 >
-                  Reset appearance to defaults
-                </button>
+                  <Row
+                    label="Mode"
+                    control={
+                      <Segmented
+                        ariaLabel="Theme mode"
+                        value={appearance.mode}
+                        options={THEME_MODES.map((m) => ({ id: m.id, label: m.label }))}
+                        onChange={(mode) => updateAppearance({ mode })}
+                      />
+                    }
+                  />
+                  <Row
+                    label="Accent"
+                    hint="A character's own color still wins in their chat"
+                    control={
+                      <SwatchRow
+                        value={appearance.accent}
+                        swatches={[
+                          ...(Object.keys(THEME_PRESETS) as ThemePresetId[]).map((id) => ({
+                            id, label: THEME_PRESETS[id].name,
+                            primary: THEME_PRESETS[id].primary,
+                            secondary: THEME_PRESETS[id].secondary,
+                          })),
+                          { id: 'custom', label: 'Custom', primary: appearance.customPrimary, secondary: appearance.customSecondary },
+                        ]}
+                        onChange={(id) => updateAppearance({ accent: id as typeof appearance.accent })}
+                      />
+                    }
+                  />
+                  {appearance.accent === 'custom' && (
+                    <Row
+                      label="Custom colors"
+                      hint="Opens your browser's full color picker"
+                      control={
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            value={appearance.customPrimary}
+                            onChange={(e) => updateAppearance({ customPrimary: e.target.value })}
+                            className="w-8 h-7 rounded cursor-pointer bg-transparent border border-slate-600"
+                            aria-label="Custom primary accent color"
+                          />
+                          <input
+                            type="color"
+                            value={appearance.customSecondary}
+                            onChange={(e) => updateAppearance({ customSecondary: e.target.value })}
+                            className="w-8 h-7 rounded cursor-pointer bg-transparent border border-slate-600"
+                            aria-label="Custom secondary accent color"
+                          />
+                        </div>
+                      }
+                    />
+                  )}
+                </Section>
+
+                <Section title="BACKGROUND" hint="What sits behind the app" icon={<Layers size={15} />}>
+                  <Row
+                    label="Style"
+                    control={
+                      <Select
+                        ariaLabel="Background style"
+                        value={appearance.background}
+                        options={BACKGROUND_STYLES.map((b) => ({ id: b.id, label: b.label }))}
+                        onChange={(background) => updateAppearance({ background })}
+                      />
+                    }
+                  />
+                  <Row
+                    label="Saturation"
+                    stack
+                    control={
+                      <Slider
+                        ariaLabel="Background saturation"
+                        value={appearance.saturation}
+                        min={50} max={200} step={5} unit="%"
+                        onChange={(saturation) => updateAppearance({ saturation })}
+                      />
+                    }
+                  />
+                  <Row
+                    label="Contrast"
+                    stack
+                    control={
+                      <Slider
+                        ariaLabel="Background contrast"
+                        value={appearance.contrast}
+                        min={80} max={130} step={1} unit="%"
+                        onChange={(contrast) => updateAppearance({ contrast })}
+                      />
+                    }
+                  />
+                </Section>
+
+                <Section title="GLASS" hint="Frosting and reflectivity of panels" icon={<Sparkles size={15} />}>
+                  <Row
+                    label="Blur"
+                    hint="0 is clear glass"
+                    stack
+                    control={
+                      <Slider
+                        ariaLabel="Glass blur"
+                        value={appearance.blur}
+                        min={0} max={40} step={1} unit="px"
+                        onChange={(blur) => updateAppearance({ blur })}
+                      />
+                    }
+                  />
+                  <Row
+                    label="Sheen"
+                    hint="Highlight and hover sweep strength"
+                    stack
+                    control={
+                      <Slider
+                        ariaLabel="Glass sheen"
+                        value={appearance.glass}
+                        min={0} max={150} step={5} unit="%"
+                        onChange={(glass) => updateAppearance({ glass })}
+                      />
+                    }
+                  />
+                </Section>
+
+                <Section
+                  title="MOTION"
+                  hint="Your device's reduce-motion setting still overrides this"
+                  icon={<Waves size={15} />}
+                  defaultOpen={false}
+                >
+                  <Row
+                    label="Transitions"
+                    hint={MOTION_STYLES.find((m) => m.id === appearance.motion)?.hint}
+                    control={
+                      <Select
+                        ariaLabel="Motion style"
+                        value={appearance.motion}
+                        options={MOTION_STYLES.map((m) => ({ id: m.id, label: m.label }))}
+                        onChange={(motion) => updateAppearance({ motion })}
+                      />
+                    }
+                  />
+                </Section>
+
+                <div className="pt-3">
+                  <button
+                    type="button"
+                    onClick={() => updateAppearance(DEFAULT_APPEARANCE)}
+                    className="text-[11px] text-slate-500 hover:text-slate-300 underline underline-offset-2"
+                  >
+                    Reset appearance to defaults
+                  </button>
+                </div>
               </div>
             )}
 
@@ -652,42 +639,6 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
 
       {/* API key help popup */}
       {showKeyHelp && <HelpPopup topicId="api-key" onClose={() => setShowKeyHelp(false)} />}
-    </div>
-  );
-}
-
-
-/** Labeled range input used across the Appearance tab. Shows the live
- *  numeric value so a slider position is never ambiguous. */
-function SliderRow({
-  label, hint, value, min, max, step, unit, onChange,
-}: {
-  label: string;
-  hint?: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  unit: string;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div className="mb-3.5">
-      <div className="flex items-center justify-between mb-1">
-        <label className="text-sm text-slate-300">{label}</label>
-        <span className="text-xs text-slate-400 tabular-nums">{value}{unit}</span>
-      </div>
-      {hint && <p className="text-[11px] text-slate-500 mb-1.5 leading-tight">{hint}</p>}
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-teal-400 cursor-pointer"
-        aria-label={label}
-      />
     </div>
   );
 }
