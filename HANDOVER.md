@@ -625,6 +625,64 @@ fields, but the UI redesign may want to present this differently).
   (needs an upload/storage path — localStorage is already the size
   bottleneck, see the portrait quota issues), and layout-level theming
   (portrait position, message density) from VN_SPEC.
+### Arthur's full UI/UX brief (consolidated 2026-09-14) — READ THIS FIRST
+
+Collected from across the whole session rather than the last message,
+because his asks were spread out and easy to lose. Tick items off here
+rather than re-deriving the list.
+
+**DONE and pushed:**
+- [x] VN portrait as a true cutout (a464869) + the transparency bug
+      that made it impossible (df27f1a)
+- [x] Circular character avatar in the chat header
+- [x] Liquid glass reading from theme vars + reflective hover sweep
+- [x] Light / Dark / OLED modes (1645356)
+- [x] Animated Aurora/Gradient/Solid backgrounds, accent-tinted
+- [x] Blur, Sheen, Saturation, Contrast controls
+- [x] Motion styles (Smooth / Jelly / Fade / Instant)
+- [x] Settings restructured into drawer sections + compact rows (a3b6b9b)
+- [x] All emoji removed; real SVG brand mark (dcd3b01)
+- [x] Spectrum/gradient colour picker with hex entry
+- [x] Voice & Speech settings tab — 11 settings, was entirely missing
+- [x] Animated launch screen (mark draws in, breathes, sweep bar)
+
+**NOT DONE — the remaining brief, roughly in his priority order:**
+- [ ] **Glossy / "3D" button treatment.** He pointed at the reference
+      dashboards' buttons that read as slightly raised and glossy.
+      Current buttons are flat fills. Needs a shared button class in
+      index.css (gradient + inner top highlight + soft outer shadow,
+      pressed state that actually depresses) applied app-wide, NOT a
+      one-off per button.
+- [ ] **Convert the other four tabs** (General, Standard Assistant,
+      Character Management, Advanced) to Section/Row from
+      SettingsControls.tsx. They still use the old full-width layout,
+      so Settings currently looks inconsistent tab to tab. This is the
+      cheapest remaining win.
+- [ ] **"Five to ten settings per feature."** His explicit standard:
+      every feature should be tweakable to an advanced level. Voice now
+      meets it (11). Audit the rest against it — avatar creation,
+      character management, chat behaviour, and Generic-vs-Personality
+      mode each have far fewer.
+- [ ] **Avatar creation tool settings** — none exist. He also wants the
+      tool itself upgraded ("a bit blocky"), but was explicit that UI
+      comes first.
+- [ ] **Background images** — user-chosen images behind the app. Needs
+      an upload/storage path; localStorage is already the size
+      bottleneck (see the portrait quota issues), so this likely needs
+      IndexedDB rather than another localStorage key.
+- [ ] **Layout-level theming** — portrait position, message density,
+      chat style. Spec'd in VISUAL_NOVEL_UI_SPEC.md's Advanced Theme
+      System, still unbuilt.
+- [ ] **Icon pass across the rest of the app.** He liked the Settings
+      icons specifically and wants that style everywhere. The chat,
+      sidebar and character-creation surfaces are the gap.
+- [ ] **Per-device appearance** (desktop vs mobile under one account) —
+      only meaningful once there's account sync; see the note above.
+
+**Standing instruction from him:** don't just make it functional, make
+it something people enjoy looking at and exploring. He explicitly
+values depth and visual richness beyond the core chat feature.
+
 - Still not started: the user-selectable color/theme picker,
   background image selection, and any account-level device-aware
   settings sync (see nuance above — not urgent while everything is
