@@ -1,9 +1,11 @@
+import { LogIn, Github, Zap } from 'lucide-react';
+import { BrandMark } from './Brand';
 export default function Auth({ onLogin, onGuest }: { onLogin: () => void, onGuest: () => void }) {
     return (
         <div className="flex min-h-screen items-center justify-center px-4 font-sans">
             <div className="w-full max-w-md p-8 space-y-6 glass-panel rounded-xl border shadow-2xl">
                 <div className="text-center">
-                    <div className="text-5xl mb-3">🎭</div>
+                    <div className="flex justify-center mb-3"><BrandMark size={56} /></div>
                     <h1
                         className="text-4xl font-bold bg-clip-text text-transparent mb-2"
                         style={{ backgroundImage: 'linear-gradient(90deg, var(--user-accent), var(--user-accent-secondary))' }}
@@ -17,13 +19,13 @@ export default function Auth({ onLogin, onGuest }: { onLogin: () => void, onGues
                         onClick={onLogin}
                         className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg transition-colors border border-slate-600 font-medium"
                     >
-                        🔐 Continue with Google
+                        <LogIn size={17} /> Continue with Google
                     </button>
                     <button
                         onClick={onLogin}
                         className="w-full flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg transition-colors border border-slate-600 font-medium"
                     >
-                        🐙 Continue with GitHub
+                        <Github size={17} /> Continue with GitHub
                     </button>
                 </div>
 
@@ -35,9 +37,10 @@ export default function Auth({ onLogin, onGuest }: { onLogin: () => void, onGues
 
                 <button
                     onClick={onGuest}
-                    className="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white py-3 rounded-lg font-medium transition-all shadow-md hover:shadow-lg"
+                    className="w-full flex items-center justify-center gap-2 text-white py-3 rounded-lg font-medium transition-all shadow-md hover:shadow-lg hover:brightness-110"
+                    style={{ backgroundImage: 'linear-gradient(90deg, var(--user-accent), var(--user-accent-secondary))' }}
                 >
-                    🚀 Start as Guest (Local Storage)
+                    <Zap size={17} /> Start as Guest (Local Storage)
                 </button>
 
                 <p className="text-xs text-slate-500 text-center pt-4 border-t border-slate-700">

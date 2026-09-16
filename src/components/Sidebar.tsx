@@ -1,3 +1,4 @@
+import { BrandMark } from './Brand';
 import { useState, useEffect } from 'react';
 import UserProfileModal from './UserProfileModal';
 import { X, HelpCircle } from 'lucide-react';
@@ -45,7 +46,7 @@ export default function Sidebar({ isGuest, isOpen, onCloseMobile, onOpenSettings
         <div className="p-4">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold text-teal-400 flex items-center gap-2">
-              <span>🎭</span> Sessions
+              <BrandMark size={20} /> Sessions
             </h2>
             <div className="flex items-center gap-2">
               <button
@@ -83,7 +84,7 @@ export default function Sidebar({ isGuest, isOpen, onCloseMobile, onOpenSettings
         <div className="flex-1 overflow-y-auto px-4">
           {isGuest && (
             <div className="p-3 bg-slate-700/50 rounded-lg text-sm text-slate-400 text-center border border-slate-600 mt-4">
-              🎭 StageEgo Guest Mode<br />
+              StageEgo Guest Mode<br />
               Sessions save locally. <br />
               <span className="text-teal-400 cursor-pointer hover:underline">Create account</span>
             </div>

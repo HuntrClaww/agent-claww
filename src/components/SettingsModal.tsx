@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, AlertCircle, Zap, Settings2, Bot, Users, SlidersHorizontal, Trash2, HelpCircle, Activity, Download, Palette, Layers, Sparkles, Waves } from 'lucide-react';
-import { Section, Row, Segmented, Select, Slider, SwatchRow } from './SettingsControls';
+import { CheckCircle, AlertCircle, Zap, Settings2, Bot, Users, SlidersHorizontal, Trash2, HelpCircle, Activity, Download, Palette, Layers, Sparkles, Waves, AudioLines, Mic, Volume2 } from 'lucide-react';
+import { Section, Row, Segmented, Select, Slider, SwatchRow, Toggle } from './SettingsControls';
+import { BrandMark } from './Brand';
+import ColorSpectrum from './ColorSpectrum';
+import {
+  DEFAULT_VOICE_PREFS, loadVoicePrefs, saveVoicePrefs,
+} from '../lib/voicePrefs';
+import { getAvailableVoices, speak } from '../lib/voiceEngine';
 import HelpPopup from './HelpPopup';
 import { validateAPIKey } from '../lib/apiValidator';
 import { listCharacters, deleteCharacter } from '../lib/characterStore';
@@ -11,11 +17,12 @@ import {
   type AppearanceSettings, type ThemePresetId,
 } from '../lib/appearance';
 
-type SettingsTab = 'general' | 'appearance' | 'assistant' | 'characters' | 'advanced' | 'diagnostics';
+type SettingsTab = 'general' | 'appearance' | 'voice' | 'assistant' | 'characters' | 'advanced' | 'diagnostics';
 
 const TABS: { id: SettingsTab; label: string; icon: typeof Settings2 }[] = [
   { id: 'general', label: 'General', icon: Settings2 },
   { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'voice', label: 'Voice & Speech', icon: AudioLines },
   { id: 'assistant', label: 'Standard Assistant', icon: Bot },
   { id: 'characters', label: 'Character Management', icon: Users },
   { id: 'advanced', label: 'Advanced', icon: SlidersHorizontal },
@@ -33,6 +40,9 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
   const [showKeyHelp, setShowKeyHelp] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [appearance, setAppearance] = useState<AppearanceSettings>(DEFAULT_APPEARANCE);
+  const [spectrumFor, setSpectrumFor] = useState<null | 'primary' | 'secondary'>(null);
+  const [voicePrefs, setVoicePrefs] = useState(DEFAULT_VOICE_PREFS);
+  const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   // Diagnostics / performance log state
   const [logStats, setLogStats] = useState<LogStats | null>(null);
@@ -62,6 +72,8 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
       setActiveTab('general');
       setSaveError(null);
       setAppearance(loadAppearance());
+      setVoicePrefs(loadVoicePrefs());
+      getAvailableVoices().then(setSystemVoices).catch(() => setSystemVoices([]));
     }
   }, [isOpen]);
 
@@ -156,6 +168,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
       localStorage.setItem('ai_temperature', String(temperature));
       localStorage.setItem('reduce_visual_effects', String(reduceEffects));
       saveAppearance(appearance);
+      saveVoicePrefs(voicePrefs);
     } catch (err) {
       // Same unguarded-setItem gap found and fixed in UserProfileModal.tsx
       // and characterStore.ts's writeAll() on 2026-09-10 - this handler
@@ -185,7 +198,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
       <div className="bg-slate-800 border border-slate-700 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         <div className="px-6 pt-6 pb-4 border-b border-slate-700">
-          <h2 className="text-2xl font-bold text-teal-400">🎭 StageEgo Settings</h2>
+          <h2 className="flex items-center gap-2.5 text-2xl font-bold"><BrandMark size={26} /><span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(90deg, var(--user-accent), var(--user-accent-secondary))' }}>StageEgo Settings</span></h2>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
@@ -277,23 +290,35 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
                   {appearance.accent === 'custom' && (
                     <Row
                       label="Custom colors"
-                      hint="Opens your browser's full color picker"
+                      hint="Pick from the full spectrum"
                       control={
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            value={appearance.customPrimary}
-                            onChange={(e) => updateAppearance({ customPrimary: e.target.value })}
-                            className="w-8 h-7 rounded cursor-pointer bg-transparent border border-slate-600"
-                            aria-label="Custom primary accent color"
-                          />
-                          <input
-                            type="color"
-                            value={appearance.customSecondary}
-                            onChange={(e) => updateAppearance({ customSecondary: e.target.value })}
-                            className="w-8 h-7 rounded cursor-pointer bg-transparent border border-slate-600"
-                            aria-label="Custom secondary accent color"
-                          />
+                        <div className="relative flex items-center gap-2">
+                          {(['primary', 'secondary'] as const).map((which) => {
+                            const val = which === 'primary' ? appearance.customPrimary : appearance.customSecondary;
+                            return (
+                              <button
+                                key={which}
+                                type="button"
+                                onClick={() => setSpectrumFor(spectrumFor === which ? null : which)}
+                                aria-label={`Choose custom ${which} color`}
+                                className="w-8 h-7 rounded-md ring-1 ring-white/20 hover:ring-white/50 transition-all"
+                                style={{ background: val }}
+                              />
+                            );
+                          })}
+                          {spectrumFor && (
+                            <div className="absolute right-0 top-9 z-50">
+                              <ColorSpectrum
+                                value={spectrumFor === 'primary' ? appearance.customPrimary : appearance.customSecondary}
+                                onChange={(hex) =>
+                                  updateAppearance(
+                                    spectrumFor === 'primary' ? { customPrimary: hex } : { customSecondary: hex }
+                                  )
+                                }
+                                onClose={() => setSpectrumFor(null)}
+                              />
+                            </div>
+                          )}
                         </div>
                       }
                     />
@@ -396,6 +421,161 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
                     Reset appearance to defaults
                   </button>
                 </div>
+              </div>
+            )}
+
+
+            {activeTab === 'voice' && (
+              <div className="-mt-1">
+                <Section title="PLAYBACK" hint="How replies are spoken" icon={<Volume2 size={15} />}>
+                  <Row
+                    label="Auto-speak replies"
+                    hint="Speak each reply as it arrives"
+                    control={
+                      <Toggle
+                        ariaLabel="Auto-speak replies"
+                        checked={voicePrefs.autoSpeak}
+                        onChange={(autoSpeak) => setVoicePrefs((p) => ({ ...p, autoSpeak }))}
+                      />
+                    }
+                  />
+                  <Row
+                    label="Volume"
+                    stack
+                    control={
+                      <Slider
+                        ariaLabel="Speech volume"
+                        value={Math.round(voicePrefs.volume * 100)}
+                        min={0} max={100} step={5} unit="%"
+                        onChange={(n) => setVoicePrefs((p) => ({ ...p, volume: n / 100 }))}
+                      />
+                    }
+                  />
+                  <Row
+                    label="Stop when I type"
+                    hint="Cut speech off the moment you start a reply"
+                    control={
+                      <Toggle
+                        ariaLabel="Stop speaking when typing"
+                        checked={voicePrefs.interruptOnType}
+                        onChange={(interruptOnType) => setVoicePrefs((p) => ({ ...p, interruptOnType }))}
+                      />
+                    }
+                  />
+                  <Row
+                    label="Skip action text"
+                    hint="Don't read *actions written like this* aloud"
+                    control={
+                      <Toggle
+                        ariaLabel="Skip action markup when speaking"
+                        checked={voicePrefs.skipMarkup}
+                        onChange={(skipMarkup) => setVoicePrefs((p) => ({ ...p, skipMarkup }))}
+                      />
+                    }
+                  />
+                </Section>
+
+                <Section title="DEFAULT VOICE" hint="Used when a character has none of their own" icon={<AudioLines size={15} />}>
+                  <Row
+                    label="Voice"
+                    control={
+                      <Select
+                        ariaLabel="Default system voice"
+                        value={voicePrefs.defaultVoiceName}
+                        options={[
+                          { id: '', label: 'System default' },
+                          ...systemVoices.slice(0, 40).map((v) => ({ id: v.name, label: `${v.name} (${v.lang})` })),
+                        ]}
+                        onChange={(defaultVoiceName) => setVoicePrefs((p) => ({ ...p, defaultVoiceName }))}
+                      />
+                    }
+                  />
+                  <Row
+                    label="Rate"
+                    stack
+                    control={
+                      <Slider
+                        ariaLabel="Default speech rate"
+                        value={Math.round(voicePrefs.defaultRate * 100)}
+                        min={50} max={200} step={5} unit="%"
+                        onChange={(n) => setVoicePrefs((p) => ({ ...p, defaultRate: n / 100 }))}
+                      />
+                    }
+                  />
+                  <Row
+                    label="Pitch"
+                    stack
+                    control={
+                      <Slider
+                        ariaLabel="Default speech pitch"
+                        value={Math.round(voicePrefs.defaultPitch * 100)}
+                        min={0} max={200} step={5} unit="%"
+                        onChange={(n) => setVoicePrefs((p) => ({ ...p, defaultPitch: n / 100 }))}
+                      />
+                    }
+                  />
+                  <Row
+                    label="Preview"
+                    hint="Hear the current settings"
+                    control={
+                      <button
+                        type="button"
+                        onClick={() =>
+                          speak('This is how your default voice sounds in StageEgo.', {
+                            voiceName: voicePrefs.defaultVoiceName || undefined,
+                            rate: voicePrefs.defaultRate,
+                            pitch: voicePrefs.defaultPitch,
+                          })
+                        }
+                        className="glass-surface px-3 py-1.5 rounded-lg text-[12px] text-slate-200"
+                      >
+                        Play sample
+                      </button>
+                    }
+                  />
+                </Section>
+
+                <Section title="DICTATION" hint="Speech-to-text behaviour" icon={<Mic size={15} />} defaultOpen={false}>
+                  <Row
+                    label="Keep listening"
+                    hint="Stay open for another phrase instead of stopping"
+                    control={
+                      <Toggle
+                        ariaLabel="Continuous listening"
+                        checked={voicePrefs.continuousListening}
+                        onChange={(continuousListening) => setVoicePrefs((p) => ({ ...p, continuousListening }))}
+                      />
+                    }
+                  />
+                  <Row
+                    label="Send on silence"
+                    hint="Send automatically once you stop speaking"
+                    control={
+                      <Toggle
+                        ariaLabel="Auto-send on silence"
+                        checked={voicePrefs.autoSendOnSilence}
+                        onChange={(autoSendOnSilence) => setVoicePrefs((p) => ({ ...p, autoSendOnSilence }))}
+                      />
+                    }
+                  />
+                  <Row
+                    label="Silence wait"
+                    hint="Longer helps if you pause mid-sentence"
+                    stack
+                    control={
+                      <Slider
+                        ariaLabel="Silence timeout before dictation ends"
+                        value={voicePrefs.silenceTimeout}
+                        min={500} max={5000} step={100} unit="ms"
+                        onChange={(silenceTimeout) => setVoicePrefs((p) => ({ ...p, silenceTimeout }))}
+                      />
+                    }
+                  />
+                </Section>
+
+                <p className="text-[11px] text-slate-500 pt-3 leading-relaxed">
+                  These are your own defaults. A character with its own voice set during creation keeps that voice — these fill in the gaps.
+                </p>
               </div>
             )}
 
