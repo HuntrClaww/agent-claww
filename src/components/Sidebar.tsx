@@ -38,7 +38,7 @@ export default function Sidebar({ isGuest, isOpen, onCloseMobile, onOpenSettings
         />
       )}
 
-      <div className={`w-64 bg-slate-800 border-r border-slate-700 flex-col h-full z-50 
+      <div className={`w-64 glass-panel border-r flex-col h-full z-50 
         fixed md:static inset-y-0 left-0 transform transition-transform duration-300
         ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:flex`}>
         {/* Top Section */}

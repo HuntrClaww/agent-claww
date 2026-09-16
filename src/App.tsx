@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Auth from './components/Auth';
 import ChatWindow from './components/ChatWindow';
-import { applyThemeColors } from './lib/themePresets';
+import { applyAppearance } from './lib/appearance';
 
 function App() {
   const [sessionState, setSessionState] = useState<'loggedOut' | 'guest' | 'loggedIn'>('loggedOut');
@@ -18,31 +18,25 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // --- THEME LOGIC ADDITION ---
+  // --- APPEARANCE ENGINE (Settings > Appearance) ---
+  // One system for mode (dark/light/OLED), accent colors, animated
+  // background, blur/saturation/contrast, glass sheen, and transition
+  // style - all applied as CSS custom properties + marker classes on
+  // <html> by lib/appearance.ts. Replaced three separate effects that
+  // each read their own localStorage key and fought over
+  // document.body.style.backgroundColor.
+  //
+  // The visual-effects opt-out below stays separate on purpose: it's an
+  // accessibility/performance escape hatch, not a style choice, and it
+  // needs to override whatever appearance settings say.
   useEffect(() => {
-    // Set page title for StageEgo
     document.title = 'StageEgo';
-
-    const applyTheme = () => {
-      const theme = localStorage.getItem('theme_preference') || 'dark';
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-        // Fallback for native Tailwind bg color if dark mode class isn't fully configured
-        document.body.style.backgroundColor = '#0f172a'; // slate-900
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.body.style.backgroundColor = '#f8fafc'; // slate-50
-      }
-    };
-
-    // Apply on load
-    applyTheme();
-    
-    // Listen for updates from the User Profile Modal
-    window.addEventListener('profileUpdated', applyTheme);
-    return () => window.removeEventListener('profileUpdated', applyTheme);
+    const apply = () => applyAppearance();
+    apply();
+    window.addEventListener('profileUpdated', apply);
+    return () => window.removeEventListener('profileUpdated', apply);
   }, []);
-  // ----------------------------
+  // -------------------------------------------------
 
   // --- VISUAL EFFECTS TOGGLE ---
   // Manual opt-out from the liquid-glass/neon-glow styling (see
@@ -63,30 +57,30 @@ function App() {
   }, []);
   // ------------------------------
 
-  // --- APP-WIDE ACCENT THEME (Settings > Appearance) ---
-  // Presets + custom picker from lib/themePresets.ts, applied as two CSS
-  // custom properties everything else can read (with a hardcoded-teal
-  // fallback for any surface that hasn't opted in yet). Same
-  // apply-on-load + reapply-on-'profileUpdated' pattern as the dark/light
-  // toggle above, since Settings' Save button already dispatches that
-  // event once for everything that changed.
-  useEffect(() => {
-    applyThemeColors();
-    window.addEventListener('profileUpdated', applyThemeColors);
-    return () => window.removeEventListener('profileUpdated', applyThemeColors);
-  }, []);
-  // -------------------------------------------------------
+  // The animated background layer lives here rather than in index.html
+  // so it mounts/unmounts with React and can't outlive the app. It's
+  // fixed and z-index:-1 (see index.css), so every screen paints on top
+  // of it - which is why ChatWindow's root is transparent now.
+  const background = <div id="bg-layer" aria-hidden="true" />;
 
   if (sessionState === 'loggedOut') {
     return (
-      <Auth 
-        onLogin={() => setSessionState('loggedIn')} 
-        onGuest={() => setSessionState('guest')} 
-      />
+      <>
+        {background}
+        <Auth 
+          onLogin={() => setSessionState('loggedIn')} 
+          onGuest={() => setSessionState('guest')} 
+        />
+      </>
     );
   }
 
-  return <ChatWindow isGuest={sessionState === 'guest'} />;
+  return (
+    <>
+      {background}
+      <ChatWindow isGuest={sessionState === 'guest'} />
+    </>
+  );
 }
 
 export default App;

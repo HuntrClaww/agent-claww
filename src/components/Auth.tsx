@@ -1,10 +1,13 @@
 export default function Auth({ onLogin, onGuest }: { onLogin: () => void, onGuest: () => void }) {
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4 font-sans">
-            <div className="w-full max-w-md p-8 space-y-6 bg-gradient-to-b from-slate-800 to-slate-850 rounded-xl border border-slate-700 shadow-2xl">
+        <div className="flex min-h-screen items-center justify-center px-4 font-sans">
+            <div className="w-full max-w-md p-8 space-y-6 glass-panel rounded-xl border shadow-2xl">
                 <div className="text-center">
                     <div className="text-5xl mb-3">🎭</div>
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-2">StageEgo</h1>
+                    <h1
+                        className="text-4xl font-bold bg-clip-text text-transparent mb-2"
+                        style={{ backgroundImage: 'linear-gradient(90deg, var(--user-accent), var(--user-accent-secondary))' }}
+                    >StageEgo</h1>
                     <p className="text-slate-300 font-medium mb-2">Chat with any character, your way</p>
                     <p className="text-slate-400 text-sm">Switch freely between characters in Generic Mode, or lock in for an immersive one-on-one in Personality Mode.</p>
                 </div>

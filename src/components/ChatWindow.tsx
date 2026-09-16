@@ -666,7 +666,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
   )?.toUpperCase() || (activeMode?.kind === 'personality' ? 'C' : 'A');
 
   return (
-    <div className="flex h-screen bg-slate-900 text-slate-100 font-sans w-full overflow-hidden">
+    <div className="flex h-screen text-slate-100 font-sans w-full overflow-hidden">
       <Sidebar 
         isGuest={isGuest} 
         isOpen={isSidebarOpen}
@@ -681,7 +681,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
         style={activeThemeColor ? ({ '--character-accent': activeThemeColor } as React.CSSProperties) : undefined}
       >
         {/* Mobile Header */}
-        <div className="md:hidden flex items-center p-4 bg-slate-800 border-b border-slate-700">
+        <div className="md:hidden flex items-center p-4 glass-panel border-b">
           <button onClick={() => setIsSidebarOpen(true)} className="text-slate-300 hover:text-white mr-4">
             <Menu size={24} />
           </button>
@@ -718,7 +718,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
         {/* Desktop Header (only shown once a mode is active) */}
         {activeMode && (
-          <div className="hidden md:flex items-center px-6 py-3.5 bg-slate-800/60 border-b border-slate-700/80 backdrop-blur-sm">
+          <div className="hidden md:flex items-center px-6 py-3.5 glass-panel border-b">
             <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 mr-3 ring-1 ring-white/10">
               {headerAvatarUrl ? (
                 <img src={headerAvatarUrl} alt="" className="w-full h-full object-cover" />

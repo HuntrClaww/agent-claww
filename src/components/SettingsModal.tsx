@@ -4,7 +4,11 @@ import HelpPopup from './HelpPopup';
 import { validateAPIKey } from '../lib/apiValidator';
 import { listCharacters, deleteCharacter } from '../lib/characterStore';
 import { getRecentLogs, getLogStats, exportLogsAsJSON, clearAllLogs, type APILogEntry, type LogStats } from '../lib/apiLogger';
-import { THEME_PRESETS, type ThemeChoice, getSavedThemeChoice, getSavedCustomColors, saveThemeChoice } from '../lib/themePresets';
+import {
+  THEME_PRESETS, THEME_MODES, BACKGROUND_STYLES, MOTION_STYLES,
+  DEFAULT_APPEARANCE, loadAppearance, saveAppearance, applyAppearance,
+  type AppearanceSettings, type ThemePresetId,
+} from '../lib/appearance';
 
 type SettingsTab = 'general' | 'appearance' | 'assistant' | 'characters' | 'advanced' | 'diagnostics';
 
@@ -27,9 +31,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
   const [clearConfirm, setClearConfirm] = useState(false);
   const [showKeyHelp, setShowKeyHelp] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [themeChoice, setThemeChoice] = useState<ThemeChoice>('teal');
-  const [customPrimary, setCustomPrimary] = useState('#14b8a6');
-  const [customSecondary, setCustomSecondary] = useState('#06b6d4');
+  const [appearance, setAppearance] = useState<AppearanceSettings>(DEFAULT_APPEARANCE);
 
   // Diagnostics / performance log state
   const [logStats, setLogStats] = useState<LogStats | null>(null);
@@ -58,10 +60,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
       setClearLogsConfirm(false);
       setActiveTab('general');
       setSaveError(null);
-      setThemeChoice(getSavedThemeChoice());
-      const savedCustom = getSavedCustomColors();
-      setCustomPrimary(savedCustom.primary);
-      setCustomSecondary(savedCustom.secondary);
+      setAppearance(loadAppearance());
     }
   }, [isOpen]);
 
@@ -133,13 +132,29 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
     setClearConfirm(false);
   };
 
+  // Appearance changes preview live against the real document, so the
+  // app behind the modal reflects them immediately. Nothing is persisted
+  // until Save; Cancel re-applies whatever was last stored.
+  const updateAppearance = (patch: Partial<AppearanceSettings>) => {
+    setAppearance((prev) => {
+      const next = { ...prev, ...patch };
+      applyAppearance(next);
+      return next;
+    });
+  };
+
+  const handleCancel = () => {
+    applyAppearance(loadAppearance());
+    onClose();
+  };
+
   const handleSave = () => {
     try {
       localStorage.setItem('user_api_key', apiKey);
       localStorage.setItem('profanity_filter', profanityFilter);
       localStorage.setItem('ai_temperature', String(temperature));
       localStorage.setItem('reduce_visual_effects', String(reduceEffects));
-      saveThemeChoice(themeChoice, { primary: customPrimary, secondary: customSecondary });
+      saveAppearance(appearance);
     } catch (err) {
       // Same unguarded-setItem gap found and fixed in UserProfileModal.tsx
       // and characterStore.ts's writeAll() on 2026-09-10 - this handler
@@ -223,23 +238,45 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
             )}
 
             {activeTab === 'appearance' && (
-              <div className="space-y-5">
+              <div className="space-y-6">
+                {/* Live preview — applies settings to the document as they
+                    change so the whole app behind the modal updates, rather
+                    than making people save-and-guess. Reverted on Cancel. */}
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">Accent Theme</h3>
-                  <p className="text-xs text-slate-500 mb-4">
-                    Colors the send button, message accents, and character glow throughout the app. A character's own color (set when creating them) still takes priority over this for that character's chat.
+                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">Theme Mode</h3>
+                  <p className="text-xs text-slate-500 mb-3">Changes preview instantly — Cancel puts it back.</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {THEME_MODES.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => updateAppearance({ mode: m.id })}
+                        className={`px-3 py-2.5 rounded-xl border text-left transition-colors ${
+                          appearance.mode === m.id ? 'opt-selected' : 'border-slate-700 hover:border-slate-600'
+                        }`}
+                      >
+                        <span className="block text-sm text-slate-200">{m.label}</span>
+                        <span className="block text-[11px] text-slate-500 leading-tight mt-0.5">{m.hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">Accent Color</h3>
+                  <p className="text-xs text-slate-500 mb-3">
+                    Drives buttons, message accents, and the background wash. A character's own color still wins in their chat.
                   </p>
                   <div className="grid grid-cols-2 gap-2.5">
-                    {(Object.keys(THEME_PRESETS) as (keyof typeof THEME_PRESETS)[]).map((id) => {
+                    {(Object.keys(THEME_PRESETS) as ThemePresetId[]).map((id) => {
                       const preset = THEME_PRESETS[id];
-                      const isActive = themeChoice === id;
                       return (
                         <button
                           key={id}
                           type="button"
-                          onClick={() => setThemeChoice(id)}
+                          onClick={() => updateAppearance({ accent: id })}
                           className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors text-left ${
-                            isActive ? 'border-white/40 bg-white/5' : 'border-slate-700 hover:border-slate-600'
+                            appearance.accent === id ? 'opt-selected' : 'border-slate-700 hover:border-slate-600'
                           }`}
                         >
                           <span
@@ -247,58 +284,131 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
                             style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }}
                           />
                           <span className="text-sm text-slate-200">{preset.name}</span>
-                          {isActive && <CheckCircle size={14} className="ml-auto text-teal-400 shrink-0" />}
+                          {appearance.accent === id && <CheckCircle size={14} className="ml-auto text-teal-400 shrink-0" />}
                         </button>
                       );
                     })}
                     <button
                       type="button"
-                      onClick={() => setThemeChoice('custom')}
+                      onClick={() => updateAppearance({ accent: 'custom' })}
                       className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors text-left ${
-                        themeChoice === 'custom' ? 'border-white/40 bg-white/5' : 'border-slate-700 hover:border-slate-600'
+                        appearance.accent === 'custom' ? 'opt-selected' : 'border-slate-700 hover:border-slate-600'
                       }`}
                     >
                       <span
                         className="w-6 h-6 rounded-full shrink-0 ring-1 ring-white/10"
-                        style={{ background: `linear-gradient(135deg, ${customPrimary}, ${customSecondary})` }}
+                        style={{ background: `linear-gradient(135deg, ${appearance.customPrimary}, ${appearance.customSecondary})` }}
                       />
                       <span className="text-sm text-slate-200">Custom</span>
-                      {themeChoice === 'custom' && <CheckCircle size={14} className="ml-auto text-teal-400 shrink-0" />}
+                      {appearance.accent === 'custom' && <CheckCircle size={14} className="ml-auto text-teal-400 shrink-0" />}
                     </button>
+                  </div>
+
+                  {appearance.accent === 'custom' && (
+                    <div className="mt-3 space-y-2.5 pl-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm text-slate-300">Primary</label>
+                        <input
+                          type="color"
+                          value={appearance.customPrimary}
+                          onChange={(e) => updateAppearance({ customPrimary: e.target.value })}
+                          className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
+                          aria-label="Custom primary accent color"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm text-slate-300">Secondary</label>
+                        <input
+                          type="color"
+                          value={appearance.customSecondary}
+                          onChange={(e) => updateAppearance({ customSecondary: e.target.value })}
+                          className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
+                          aria-label="Custom secondary accent color"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">Background</h3>
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {BACKGROUND_STYLES.map((b) => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => updateAppearance({ background: b.id })}
+                        className={`px-3 py-2.5 rounded-xl border text-left transition-colors ${
+                          appearance.background === b.id ? 'opt-selected' : 'border-slate-700 hover:border-slate-600'
+                        }`}
+                      >
+                        <span className="block text-sm text-slate-200">{b.label}</span>
+                        <span className="block text-[11px] text-slate-500 leading-tight mt-0.5">{b.hint}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <SliderRow
+                    label="Saturation"
+                    value={appearance.saturation}
+                    min={50} max={200} step={5} unit="%"
+                    onChange={(v) => updateAppearance({ saturation: v })}
+                  />
+                  <SliderRow
+                    label="Contrast"
+                    value={appearance.contrast}
+                    min={80} max={130} step={1} unit="%"
+                    onChange={(v) => updateAppearance({ contrast: v })}
+                  />
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-3">Glass</h3>
+                  <SliderRow
+                    label="Blur"
+                    hint="How frosted panels look — 0 is clear glass"
+                    value={appearance.blur}
+                    min={0} max={40} step={1} unit="px"
+                    onChange={(v) => updateAppearance({ blur: v })}
+                  />
+                  <SliderRow
+                    label="Sheen"
+                    hint="Strength of the reflective highlight and sweep"
+                    value={appearance.glass}
+                    min={0} max={150} step={5} unit="%"
+                    onChange={(v) => updateAppearance({ glass: v })}
+                  />
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">Motion</h3>
+                  <p className="text-xs text-slate-500 mb-3">
+                    Your device's system-level "reduce motion" setting still overrides this.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {MOTION_STYLES.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => updateAppearance({ motion: m.id })}
+                        className={`px-3 py-2.5 rounded-xl border text-left transition-colors ${
+                          appearance.motion === m.id ? 'opt-selected' : 'border-slate-700 hover:border-slate-600'
+                        }`}
+                      >
+                        <span className="block text-sm text-slate-200">{m.label}</span>
+                        <span className="block text-[11px] text-slate-500 leading-tight mt-0.5">{m.hint}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                {themeChoice === 'custom' && (
-                  <div className="pt-2 border-t border-slate-700 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-slate-300">Primary color</label>
-                      <input
-                        type="color"
-                        value={customPrimary}
-                        onChange={(e) => setCustomPrimary(e.target.value)}
-                        className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
-                        aria-label="Custom primary accent color"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-slate-300">Secondary color</label>
-                      <input
-                        type="color"
-                        value={customSecondary}
-                        onChange={(e) => setCustomSecondary(e.target.value)}
-                        className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
-                        aria-label="Custom secondary accent color"
-                      />
-                    </div>
-                    <p className="text-xs text-slate-500">
-                      Your browser's own color picker opens here — a full spectrum, not just a swatch list.
-                    </p>
-                  </div>
-                )}
-
-                <p className="text-xs text-slate-600 pt-2 border-t border-slate-700">
-                  Background and layout theming aren't part of this yet — accent colors only, for now.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => updateAppearance(DEFAULT_APPEARANCE)}
+                  className="text-xs text-slate-400 hover:text-slate-200 underline underline-offset-2"
+                >
+                  Reset appearance to defaults
+                </button>
               </div>
             )}
 
@@ -526,7 +636,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
             <p className="text-xs text-red-400 mr-auto">{saveError}</p>
           )}
           <button 
-            onClick={onClose}
+            onClick={handleCancel}
             className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
           >
             Cancel
@@ -542,6 +652,42 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
 
       {/* API key help popup */}
       {showKeyHelp && <HelpPopup topicId="api-key" onClose={() => setShowKeyHelp(false)} />}
+    </div>
+  );
+}
+
+
+/** Labeled range input used across the Appearance tab. Shows the live
+ *  numeric value so a slider position is never ambiguous. */
+function SliderRow({
+  label, hint, value, min, max, step, unit, onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="mb-3.5">
+      <div className="flex items-center justify-between mb-1">
+        <label className="text-sm text-slate-300">{label}</label>
+        <span className="text-xs text-slate-400 tabular-nums">{value}{unit}</span>
+      </div>
+      {hint && <p className="text-[11px] text-slate-500 mb-1.5 leading-tight">{hint}</p>}
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-teal-400 cursor-pointer"
+        aria-label={label}
+      />
     </div>
   );
 }

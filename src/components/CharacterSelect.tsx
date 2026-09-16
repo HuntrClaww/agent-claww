@@ -312,7 +312,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
         <div className="relative grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-0">
 
           {/* GENERIC MODE */}
-          <div className="relative flex flex-col p-7 rounded-2xl md:rounded-r-none bg-slate-800/60 border border-slate-700 md:border-r-0">
+          <div className="relative flex flex-col p-7 rounded-2xl md:rounded-r-none glass-panel border md:border-r-0">
             <div className="flex items-center gap-2 mb-1">
               <Shuffle size={16} className="text-cyan-400" />
               <span className="text-[11px] font-semibold uppercase tracking-widest text-cyan-400">Side A · Generic</span>
@@ -346,7 +346,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
           </div>
 
           {/* PERSONALITY MODE */}
-          <div className="relative flex flex-col p-7 rounded-2xl md:rounded-l-none bg-slate-800/60 border border-slate-700 md:border-l-0">
+          <div className="relative flex flex-col p-7 rounded-2xl md:rounded-l-none glass-panel border md:border-l-0">
             <div className="flex items-center gap-2 mb-1">
               <Lock size={15} className="text-amber-400" />
               <span className="text-[11px] font-semibold uppercase tracking-widest text-amber-400">Side B · Personality</span>

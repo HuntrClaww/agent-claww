@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* App-wide accent theme (Settings > Appearance, lib/themePresets.ts).
+/* App-wide accent theme (Settings > Appearance, lib/appearance.ts).
    These are the fallback values used before JS has run once, or by any
    surface that references the variable without its own fallback -
    App.tsx overwrites both on load and on every Settings save. */
@@ -116,4 +116,291 @@ html.reduce-effects .glow-neon,
 html.reduce-effects .glow-static {
     animation: none;
     filter: none;
+}
+/* ==========================================================================
+   APPEARANCE ENGINE (2026-09-14)
+   Driven entirely by lib/appearance.ts, which writes these custom
+   properties + marker classes onto <html>. Nothing here reads
+   localStorage itself - CSS only reacts to what was applied.
+   ========================================================================== */
+
+:root {
+    /* Fallbacks for first paint, before applyAppearance() has run once.
+       Mirror DEFAULT_APPEARANCE (dark mode) so there's no flash. */
+    --surface-base: #0f172a;
+    --surface-panel: rgba(30, 41, 59, 0.72);
+    --surface-raised: rgba(51, 65, 85, 0.66);
+    --surface-border: rgba(255, 255, 255, 0.10);
+    --text-primary: #f1f5f9;
+    --text-muted: #94a3b8;
+    --glass-tint: rgba(255, 255, 255, 0.14);
+    --glass-tint-soft: rgba(255, 255, 255, 0.03);
+    --glass-edge: rgba(255, 255, 255, 0.16);
+    --glass-sheen: rgba(255, 255, 255, 0.25);
+    --glass-blur: 16px;
+    --glass-strength: 1;
+    --bg-saturation: 120%;
+    --bg-contrast: 100%;
+    --bg-wash-opacity: 0.55;
+    --motion-fast: 150ms;
+    --motion-base: 240ms;
+    --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --motion-lift: 1;
+}
+
+/* The base color lives on <html>, NOT <body>. index.html's inline shell
+   styles set a background on <html>, which stops <body>'s background from
+   propagating to the canvas - so a background on <body> paints as an
+   ordinary block background, which in CSS paint order lands ON TOP of
+   negative-z-index elements and completely hid #bg-layer. Keeping <body>
+   transparent is what lets the animated layer show through. */
+html {
+    background-color: var(--surface-base);
+}
+body {
+    background-color: transparent;
+    color: var(--text-primary);
+}
+
+/* --- Animated background layer -------------------------------------------
+   A fixed, behind-everything layer rather than a body background, so it
+   can run its own animation and filters without the rest of the app
+   inheriting them. app-root sits above it and is transparent, which is
+   why ChatWindow's root can no longer be an opaque bg-slate-900. */
+#bg-layer {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--surface-base);
+    filter: saturate(var(--bg-saturation)) contrast(var(--bg-contrast));
+    transition: filter var(--motion-base) var(--motion-ease);
+}
+
+#bg-layer::before,
+#bg-layer::after {
+    content: '';
+    position: absolute;
+    inset: -25%;
+    opacity: var(--bg-wash-opacity);
+    background-repeat: no-repeat;
+}
+
+/* Aurora: two large offset radial fields drifting on different timings,
+   so they never visibly loop in sync. Deliberately slow (28s/36s) -
+   this should read as "alive" in peripheral vision, not as movement
+   competing with the chat for attention. */
+html.bg-aurora #bg-layer::before {
+    background-image:
+        radial-gradient(ellipse 55% 45% at 22% 28%, var(--user-accent), transparent 70%),
+        radial-gradient(ellipse 45% 40% at 78% 18%, var(--user-accent-secondary), transparent 72%);
+    animation: aurora-drift-a 28s ease-in-out infinite alternate;
+}
+html.bg-aurora #bg-layer::after {
+    background-image:
+        radial-gradient(ellipse 50% 45% at 70% 80%, var(--user-accent-secondary), transparent 70%),
+        radial-gradient(ellipse 40% 38% at 25% 75%, var(--user-accent), transparent 72%);
+    animation: aurora-drift-b 36s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift-a {
+    0%   { transform: translate3d(-3%, -2%, 0) scale(1); }
+    50%  { transform: translate3d(4%, 3%, 0) scale(1.08); }
+    100% { transform: translate3d(-2%, 4%, 0) scale(1.02); }
+}
+@keyframes aurora-drift-b {
+    0%   { transform: translate3d(2%, 3%, 0) scale(1.05); }
+    50%  { transform: translate3d(-4%, -2%, 0) scale(1); }
+    100% { transform: translate3d(3%, -3%, 0) scale(1.07); }
+}
+
+/* Gradient: the same color story, held still. */
+html.bg-gradient #bg-layer::before {
+    background-image:
+        radial-gradient(ellipse 60% 50% at 20% 25%, var(--user-accent), transparent 70%),
+        radial-gradient(ellipse 55% 45% at 80% 75%, var(--user-accent-secondary), transparent 72%);
+}
+html.bg-gradient #bg-layer::after { background-image: none; }
+
+html.bg-solid #bg-layer::before,
+html.bg-solid #bg-layer::after { background-image: none; }
+
+/* --- Glass -----------------------------------------------------------------
+   Rewritten to read from the appearance vars instead of hardcoded rgba,
+   so blur/sheen/mode all flow through. --glass-strength scales the
+   highlight without touching the blur, so "less sheen" and "less
+   frosted" stay separate controls. */
+.glass-surface {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--glass-tint), var(--glass-tint-soft));
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    border: 1px solid var(--glass-edge);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, calc(0.25 * var(--glass-strength))),
+        inset 0 0 0 1px rgba(255, 255, 255, calc(0.04 * var(--glass-strength))),
+        0 4px 24px rgba(0, 0, 0, 0.25);
+    transition:
+        box-shadow var(--motion-base) var(--motion-ease),
+        border-color var(--motion-base) var(--motion-ease),
+        transform var(--motion-fast) var(--motion-ease),
+        background var(--motion-base) var(--motion-ease);
+    will-change: backdrop-filter, transform;
+}
+
+/* Reflective sweep: a narrow diagonal highlight that travels across the
+   surface on hover, standing in for the flare a real glass object throws
+   when light crosses it. Kept low-opacity and quick - the point is a
+   hint of reflectivity, not a shine effect that draws the eye. */
+.glass-surface::after {
+    content: '';
+    position: absolute;
+    top: -60%;
+    left: -120%;
+    width: 60%;
+    height: 220%;
+    pointer-events: none;
+    transform: rotate(18deg);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, calc(0.16 * var(--glass-strength))),
+        rgba(255, 255, 255, calc(0.32 * var(--glass-strength))),
+        rgba(255, 255, 255, calc(0.16 * var(--glass-strength))),
+        transparent
+    );
+    opacity: 0;
+    transition: opacity var(--motion-fast) var(--motion-ease);
+}
+.glass-surface:hover::after {
+    opacity: 1;
+    animation: glass-sweep var(--motion-base) var(--motion-ease) forwards;
+}
+@keyframes glass-sweep {
+    from { left: -120%; }
+    to   { left: 140%; }
+}
+
+.glass-surface:hover {
+    border-color: var(--glass-sheen);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, calc(0.35 * var(--glass-strength))),
+        inset 0 0 0 1px rgba(255, 255, 255, calc(0.06 * var(--glass-strength))),
+        0 6px 28px rgba(0, 0, 0, 0.3);
+}
+.glass-surface:active {
+    transform: scale(calc(1 - 0.02 * var(--motion-lift)));
+}
+
+/* A non-interactive glass panel: same material, no hover sweep or press
+   response. For sidebars, headers, modals - surfaces you look at rather
+   than click. */
+.glass-panel {
+    background: var(--surface-panel);
+    backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    border-color: var(--surface-border);
+    transition: background var(--motion-base) var(--motion-ease),
+                border-color var(--motion-base) var(--motion-ease);
+}
+
+/* --- Motion styles ---------------------------------------------------------
+   'fade' zeroes out movement but keeps opacity changes; 'none' disables
+   transitions outright. Both are scoped to transition/animation only, so
+   nothing structural depends on them. */
+html.motion-fade .glass-surface:active { transform: none; }
+html.motion-none *,
+html.motion-none *::before,
+html.motion-none *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+}
+html.motion-none #bg-layer::before,
+html.motion-none #bg-layer::after { animation: none; }
+
+/* OS-level reduce-motion still wins over any in-app choice: stop the
+   background drift and the hover sweep, keep the static material. */
+@media (prefers-reduced-motion: reduce) {
+    #bg-layer::before,
+    #bg-layer::after { animation: none; }
+    .glass-surface:hover::after { animation: none; opacity: 0; }
+}
+
+/* The existing Visual Effects opt-out (Settings > Advanced) also kills
+   the new background layer and sweep - it exists for devices where
+   backdrop-filter and large animated gradients are genuinely costly. */
+html.reduce-effects .glass-surface::after { display: none; }
+html.reduce-effects .glass-panel {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--surface-base);
+}
+html.reduce-effects #bg-layer::before,
+html.reduce-effects #bg-layer::after { animation: none; opacity: 0.25; }
+
+/* --- Light mode text/surface remap ----------------------------------------
+   The components were written dark-first with hardcoded Tailwind slate
+   classes (text-slate-100, bg-slate-800/60, border-slate-700...). Rather
+   than refactor every component to CSS vars in one pass - a huge, risky
+   diff - light mode remaps that slate scale in place. The scale is
+   effectively "distance from the background", so inverting it preserves
+   each element's intended hierarchy instead of guessing per component.
+
+   This is a bridge, not the end state: new components should use the
+   --text-primary / --surface-* vars directly. */
+html.theme-light .text-slate-100,
+html.theme-light .text-slate-200 { color: #0f172a; }
+html.theme-light .text-white { color: #0f172a; }
+html.theme-light .text-slate-300 { color: #1e293b; }
+html.theme-light .text-slate-400 { color: #475569; }
+html.theme-light .text-slate-500 { color: #64748b; }
+html.theme-light .text-slate-600 { color: #64748b; }
+
+html.theme-light .bg-slate-900,
+html.theme-light .bg-slate-800 { background-color: #ffffff; }
+html.theme-light .bg-slate-900\/70,
+html.theme-light .bg-slate-900\/50,
+html.theme-light .bg-slate-900\/40 { background-color: rgba(255, 255, 255, 0.75); }
+html.theme-light .bg-slate-800\/60 { background-color: rgba(255, 255, 255, 0.7); }
+html.theme-light .bg-slate-700 { background-color: #e2e8f0; }
+
+html.theme-light .border-slate-600,
+html.theme-light .border-slate-700,
+html.theme-light .border-slate-800 { border-color: rgba(15, 23, 42, 0.14); }
+
+html.theme-light .hover\:bg-slate-700:hover { background-color: #e2e8f0; }
+html.theme-light .hover\:bg-slate-600:hover { background-color: #cbd5e1; }
+
+/* Message bubbles: the AI/character side is a dark gradient by default,
+   which needs its own light-mode treatment to stay readable. */
+html.theme-light .from-slate-800 { --tw-gradient-from: #ffffff var(--tw-gradient-from-position); }
+html.theme-light .to-slate-700 { --tw-gradient-to: #f1f5f9 var(--tw-gradient-to-position); }
+
+/* OLED leans on pure black, so the mid-slate surfaces need to drop too -
+   otherwise panels float as obvious grey rectangles against true black. */
+html.theme-oled .bg-slate-900 { background-color: #000000; }
+html.theme-oled .bg-slate-800 { background-color: #101012; }
+html.theme-oled .bg-slate-800\/60 { background-color: rgba(16, 16, 18, 0.72); }
+html.theme-oled .from-slate-800 { --tw-gradient-from: #131316 var(--tw-gradient-from-position); }
+html.theme-oled .to-slate-700 { --tw-gradient-to: #1b1b20 var(--tw-gradient-to-position); }
+
+/* Stragglers the scale remap above doesn't cover: translucent slate
+   surfaces and the teal link color, both of which sit on light
+   backgrounds in light mode and lose contrast. */
+html.theme-light .bg-slate-700\/50 { background-color: rgba(15, 23, 42, 0.05); }
+html.theme-light .bg-slate-700\/30 { background-color: rgba(15, 23, 42, 0.04); }
+html.theme-light .text-teal-400 { color: #0d9488; }
+html.theme-light .text-amber-400 { color: #b45309; }
+html.theme-light .text-cyan-400 { color: #0e7490; }
+html.theme-oled .bg-slate-700\/50 { background-color: rgba(255, 255, 255, 0.06); }
+
+/* Selected-option cards in Settings. Was a white border + white tint,
+   which is invisible against light mode's white panels - keyed to the
+   user's accent instead so it reads in every theme. */
+.opt-selected {
+    border-color: var(--user-accent);
+    background-color: color-mix(in srgb, var(--user-accent) 14%, transparent);
+    box-shadow: 0 0 0 1px var(--user-accent) inset;
 }
