@@ -42,6 +42,10 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
   const [appearance, setAppearance] = useState<AppearanceSettings>(DEFAULT_APPEARANCE);
   const [spectrumFor, setSpectrumFor] = useState<null | 'primary' | 'secondary'>(null);
   const [voicePrefs, setVoicePrefs] = useState(DEFAULT_VOICE_PREFS);
+  // Backs the SAME 'voice_mode_on' key the in-chat speaker-icon toggle
+  // already uses, rather than a second, disconnected flag - see
+  // Known Issue #24.
+  const [voiceModeDefault, setVoiceModeDefault] = useState(false);
   const [systemVoices, setSystemVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   // Diagnostics / performance log state
@@ -73,6 +77,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
       setSaveError(null);
       setAppearance(loadAppearance());
       setVoicePrefs(loadVoicePrefs());
+      setVoiceModeDefault(localStorage.getItem('voice_mode_on') === 'true');
       getAvailableVoices().then(setSystemVoices).catch(() => setSystemVoices([]));
     }
   }, [isOpen]);
@@ -169,6 +174,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
       localStorage.setItem('reduce_visual_effects', String(reduceEffects));
       saveAppearance(appearance);
       saveVoicePrefs(voicePrefs);
+      localStorage.setItem('voice_mode_on', String(voiceModeDefault));
     } catch (err) {
       // Same unguarded-setItem gap found and fixed in UserProfileModal.tsx
       // and characterStore.ts's writeAll() on 2026-09-10 - this handler
@@ -429,13 +435,13 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
               <div className="-mt-1">
                 <Section title="PLAYBACK" hint="How replies are spoken" icon={<Volume2 size={15} />}>
                   <Row
-                    label="Auto-speak replies"
-                    hint="Speak each reply as it arrives"
+                    label="Voice on by default"
+                    hint="Speak replies aloud in new chats without tapping the speaker icon each time"
                     control={
                       <Toggle
-                        ariaLabel="Auto-speak replies"
-                        checked={voicePrefs.autoSpeak}
-                        onChange={(autoSpeak) => setVoicePrefs((p) => ({ ...p, autoSpeak }))}
+                        ariaLabel="Voice mode on by default"
+                        checked={voiceModeDefault}
+                        onChange={setVoiceModeDefault}
                       />
                     }
                   />
@@ -555,19 +561,6 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
                         ariaLabel="Auto-send on silence"
                         checked={voicePrefs.autoSendOnSilence}
                         onChange={(autoSendOnSilence) => setVoicePrefs((p) => ({ ...p, autoSendOnSilence }))}
-                      />
-                    }
-                  />
-                  <Row
-                    label="Silence wait"
-                    hint="Longer helps if you pause mid-sentence"
-                    stack
-                    control={
-                      <Slider
-                        ariaLabel="Silence timeout before dictation ends"
-                        value={voicePrefs.silenceTimeout}
-                        min={500} max={5000} step={100} unit="ms"
-                        onChange={(silenceTimeout) => setVoicePrefs((p) => ({ ...p, silenceTimeout }))}
                       />
                     }
                   />

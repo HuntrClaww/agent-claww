@@ -32,6 +32,12 @@ export interface VoiceSettings {
                         // portable across platforms - see voiceEngine.ts pickBestVoice)
   pitch: number;       // 0 - 2, default 1
   rate: number;         // 0.1 - 10, default 1
+  volume?: number;      // 0 - 1, default 1 - multiplies on top of speakExpressive's
+                         // emotion-driven volume nudge, doesn't replace it
+  expressiveness?: number; // 0 - 150 (%), default 100 - scales how much
+                         // speakExpressive's per-emotion pitch/rate/pause
+                         // shifts apply. 0 = flat delivery regardless of
+                         // emotion, 100 = the tuned defaults, 150 = exaggerated
 }
 
 export interface SavedCharacter {

@@ -271,11 +271,12 @@ function basePauseForPunctuation(trailing: string): number {
  * a pause duration after each based on the punctuation type and the
  * given emotion's pacing profile.
  */
-export function buildProsodyPlan(text: string, emotion: Emotion = 'neutral'): ProsodyChunk[] {
+export function buildProsodyPlan(text: string, emotion: Emotion = 'neutral', pauseMulOverride?: number): ProsodyChunk[] {
   const cleaned = text.trim();
   if (!cleaned) return [];
 
   const profile = EMOTION_PROSODY[emotion] ?? EMOTION_PROSODY.neutral;
+  const pauseMul = pauseMulOverride ?? profile.pauseMul;
 
   // Capture each clause together with its trailing punctuation
   const raw = cleaned.match(/[^,;:.!?]+(?:\.\.\.|[,;:.!?])*/g) ?? [cleaned];
@@ -286,7 +287,7 @@ export function buildProsodyPlan(text: string, emotion: Emotion = 'neutral'): Pr
     .map(part => {
       const trailingMatch = part.match(/(\.\.\.|[,;:.!?]+)$/);
       const trailing = trailingMatch ? trailingMatch[0] : '';
-      const pauseAfterMs = Math.round(basePauseForPunctuation(trailing) * profile.pauseMul);
+      const pauseAfterMs = Math.round(basePauseForPunctuation(trailing) * pauseMul);
       return { text: part, pauseAfterMs };
     });
 }
@@ -315,12 +316,25 @@ export async function speakExpressive(
   const profile = EMOTION_PROSODY[emotion] ?? EMOTION_PROSODY.neutral;
   const basePitch = settings?.pitch ?? 1;
   const baseRate = settings?.rate ?? 1;
+  const baseVolume = settings?.volume ?? 1;
 
-  const effectivePitch = clamp(basePitch * profile.pitchMul, 0, 2);
-  const effectiveRate = clamp(baseRate * profile.rateMul, 0.1, 10);
-  const effectiveVolume = clamp(profile.volume, 0, 1);
+  // Expressiveness (0-150%) scales how far the emotion profile's
+  // multipliers pull away from 1.0 (neutral/no effect). 100% is the
+  // profile as tuned; 0% collapses every multiplier to 1.0 - flat
+  // delivery regardless of detected emotion; 150% exaggerates it.
+  const strength = clamp((settings?.expressiveness ?? 100) / 100, 0, 1.5);
+  const scaledPitchMul = 1 + (profile.pitchMul - 1) * strength;
+  const scaledRateMul = 1 + (profile.rateMul - 1) * strength;
+  const scaledPauseMul = 1 + (profile.pauseMul - 1) * strength;
+  // Volume has no "1.0 = no effect" baseline the way multipliers do -
+  // it's blended toward 1.0 (full volume, no emotion effect) instead.
+  const scaledEmotionVolume = 1 + (profile.volume - 1) * strength;
 
-  const plan = buildProsodyPlan(text, emotion);
+  const effectivePitch = clamp(basePitch * scaledPitchMul, 0, 2);
+  const effectiveRate = clamp(baseRate * scaledRateMul, 0.1, 10);
+  const effectiveVolume = clamp(baseVolume * scaledEmotionVolume, 0, 1);
+
+  const plan = buildProsodyPlan(text, emotion, scaledPauseMul);
 
   for (const chunk of plan) {
     await new Promise<void>(resolve => {
@@ -405,7 +419,8 @@ let activeRecognition: SpeechRecognition | null = null;
  */
 export function startListening(
   onResult: (transcript: string, isFinal: boolean) => void,
-  onEnd?: () => void
+  onEnd?: () => void,
+  continuous: boolean = true
 ): () => void {
   const Ctor = getRecognitionCtor();
   if (!Ctor) {
@@ -417,7 +432,7 @@ export function startListening(
   stopListening(); // only one session at a time
 
   const recognition = new Ctor();
-  recognition.continuous = true;
+  recognition.continuous = continuous;
   recognition.interimResults = true;
   recognition.lang = 'en-US';
 
@@ -630,6 +645,8 @@ export interface VoicePackage {
   lang?: string;
   pitch: number;
   rate: number;
+  volume?: number;
+  expressiveness?: number;
 }
 
 /** Builds a portable voice package object from a character's voice settings. */
@@ -641,6 +658,8 @@ export function exportVoicePackage(settings: VoiceSettings, characterName?: stri
     lang: settings.lang,
     pitch: settings.pitch,
     rate: settings.rate,
+    volume: settings.volume,
+    expressiveness: settings.expressiveness,
   };
 }
 
@@ -685,6 +704,8 @@ export function parseVoicePackage(jsonText: string): VoiceSettings | null {
       lang: typeof parsed.lang === 'string' ? parsed.lang : undefined,
       pitch: parsed.pitch,
       rate: parsed.rate,
+      volume: typeof parsed.volume === 'number' ? clamp(parsed.volume, 0, 1) : undefined,
+      expressiveness: typeof parsed.expressiveness === 'number' ? clamp(parsed.expressiveness, 0, 150) : undefined,
     };
   } catch (err) {
     console.warn('[voiceEngine] Failed to parse voice package:', err);

@@ -161,9 +161,12 @@ export function Select<T extends string>({
 }
 
 /** Inline slider with its live value. Kept on one row so a handful of
- *  them read as a tidy group rather than a stack of blocks. */
+ *  them read as a tidy group rather than a stack of blocks. `decimals`
+ *  formats the displayed value (and drives the step precision) for
+ *  continuous values like pitch (1.3) rather than forcing everything
+ *  through integer-plus-unit display. */
 export function Slider({
-  value, min, max, step, unit, onChange, ariaLabel,
+  value, min, max, step, unit, onChange, ariaLabel, decimals = 0,
 }: {
   value: number;
   min: number;
@@ -172,6 +175,7 @@ export function Slider({
   unit: string;
   onChange: (v: number) => void;
   ariaLabel: string;
+  decimals?: number;
 }) {
   return (
     <div className="flex items-center gap-2.5 w-full">
@@ -187,7 +191,7 @@ export function Slider({
         style={{ accentColor: 'var(--user-accent)' }}
       />
       <span className="text-[11px] text-slate-400 tabular-nums w-[46px] text-right shrink-0">
-        {value}{unit}
+        {value.toFixed(decimals)}{unit}
       </span>
     </div>
   );

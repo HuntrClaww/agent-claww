@@ -8,11 +8,12 @@ import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX, M
 import { APIClient, detectAPIProvider, type ChatTurn } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag, type CharacterCandidate } from '../lib/characterFetch';
 import CharacterSearchModal from './CharacterSearchModal';
-import { getCharacter, resolvePortraitForEmotion } from '../lib/characterStore';
+import { getCharacter, resolvePortraitForEmotion, type VoiceSettings } from '../lib/characterStore';
 import { loadThread, saveThread, personalityThreadKey, GENERIC_THREAD_KEY, type Message } from '../lib/chatLogStore';
 import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
 import { estimateTokens, classifyBudget, SESSION_TOKEN_STOP } from '../lib/sessionBudget';
 import { speakExpressive, stopSpeaking, isVoiceSupported, isMicSupported, startListening, stopListening, primeSpeechIfNeeded, checkMicSignalQuality, listAudioInputDevices, watchAudioInputDevices, isLikelyExternalAudioDevice } from '../lib/voiceEngine';
+import { loadVoicePrefs } from '../lib/voicePrefs';
 import { flagUnusualTokens, extractKnownProperNouns } from '../lib/wordFlagging';
 
 // Message shape now lives in chatLogStore.ts (imported above) so the
@@ -195,15 +196,23 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     }
     setMicWarning(null);
     setIsListening(true);
+    const { continuousListening, autoSendOnSilence } = loadVoicePrefs();
     startListening(
       (transcript, isFinal) => {
         setInputText(transcript.slice(0, 2000));
         if (isFinal) {
           stopListening();
           setIsListening(false);
+          if (autoSendOnSilence && transcript.trim()) {
+            // setInputText above hasn't flushed to state yet - defer one
+            // tick so handleSend reads the transcript it was just given,
+            // not whatever inputText held before this result arrived.
+            setTimeout(() => handleSend(), 0);
+          }
         }
       },
-      () => setIsListening(false)
+      () => setIsListening(false),
+      continuousListening
     );
 
     // Advisory quality check, runs in parallel - never delays or blocks
@@ -532,11 +541,29 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
     // Generic Mode always uses the browser default voice since fetched
     // characters aren't stored. `emotion` (already detected above for the
     // portrait panel) drives pitch/rate/pause nudges via speakExpressive.
+    //
+    // Global Settings > Voice & Speech prefs fill in anything the
+    // character didn't set (voice/rate/pitch) and always apply on top
+    // (volume) - the character's own choices win where they exist,
+    // matching how the accent-color cascade works elsewhere.
     if (voiceModeOn && isVoiceSupported() && cleanedText.trim()) {
       const savedChar = activeMode?.kind === 'personality' && activeMode.characterId
         ? getCharacter(activeMode.characterId)
         : undefined;
-      speakExpressive(cleanedText, savedChar?.voiceSettings, emotion);
+      const prefs = loadVoicePrefs();
+      const own = savedChar?.voiceSettings;
+      const effectiveSettings: VoiceSettings = {
+        voiceName: own?.voiceName || prefs.defaultVoiceName || undefined,
+        lang: own?.lang,
+        pitch: own?.pitch ?? prefs.defaultPitch,
+        rate: own?.rate ?? prefs.defaultRate,
+        volume: (own?.volume ?? 1) * prefs.volume,
+        expressiveness: own?.expressiveness,
+      };
+      const spokenText = prefs.skipMarkup
+        ? cleanedText.replace(/\*[^*]+\*/g, '').replace(/\s{2,}/g, ' ').trim()
+        : cleanedText;
+      if (spokenText) speakExpressive(spokenText, effectiveSettings, emotion);
     }
   };
 
@@ -932,7 +959,13 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                     <input
                       type="text"
                       value={inputText}
-                      onChange={(e) => setInputText(e.target.value.slice(0, 2000))}
+                      onChange={(e) => {
+                        setInputText(e.target.value.slice(0, 2000));
+                        // "Stop when I type" (Settings > Voice & Speech) -
+                        // cuts off a reply being read aloud the moment the
+                        // user starts composing the next one.
+                        if (loadVoicePrefs().interruptOnType) stopSpeaking();
+                      }}
                       onKeyDown={handleKeyDown}
                       placeholder={
                         activeMode?.kind === 'generic'

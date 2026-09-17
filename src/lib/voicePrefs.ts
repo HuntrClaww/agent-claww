@@ -12,9 +12,9 @@
 // management but nothing for TTS itself, which is this gap.
 
 export interface VoicePrefs {
-  /** Speak AI replies automatically as they arrive. */
-  autoSpeak: boolean;
-  /** Output volume for all speech, 0-1. */
+  /** Output volume for all speech, 0-1. Multiplies on top of the
+   *  emotion-driven volume nudge in speakExpressive(), rather than
+   *  replacing it. */
   volume: number;
   /** Default rate for characters with no rate of their own, 0.5-2. */
   defaultRate: number;
@@ -26,25 +26,37 @@ export interface VoicePrefs {
   skipMarkup: boolean;
   /** Stop speaking as soon as the user starts typing. */
   interruptOnType: boolean;
-  /** Keep the mic open for another phrase after a result. */
+  /** Passed straight to SpeechRecognition.continuous. */
   continuousListening: boolean;
-  /** Send a dictated message automatically once speech ends. */
+  /** Send a dictated message automatically once a final result arrives,
+   *  instead of leaving it in the box for review. */
   autoSendOnSilence: boolean;
-  /** How long to wait for silence before ending dictation, in ms. */
-  silenceTimeout: number;
 }
 
+// A "silence wait" duration was cut from here deliberately, not
+// forgotten: the Web Speech API has no standard property for how long
+// to wait before treating silence as the end of an utterance (only
+// continuous/interimResults/lang/maxAlternatives are real, spec'd
+// fields) - when the browser decides an utterance is final is an
+// internal engine heuristic, not something JS can configure. A slider
+// claiming to control it would have been a fake setting - exactly the
+// "looks wired, isn't" trap this session kept finding. See Known Issue
+// #16 for the actual early-cutoff bug, which is a different, harder
+// problem than exposing a timeout that doesn't exist.
+
 export const DEFAULT_VOICE_PREFS: VoicePrefs = {
-  autoSpeak: false,
   volume: 1,
   defaultRate: 1,
   defaultPitch: 1,
   defaultVoiceName: '',
   skipMarkup: true,
   interruptOnType: true,
-  continuousListening: false,
+  // Matches the hardcoded `recognition.continuous = true` this replaces
+  // in voiceEngine.ts - default here must match prior real behavior, or
+  // saving Settings without touching this toggle would silently change
+  // how dictation behaves for everyone.
+  continuousListening: true,
   autoSendOnSilence: false,
-  silenceTimeout: 1500,
 };
 
 const KEY = 'app_voice_prefs_v1';
@@ -71,7 +83,6 @@ export function loadVoicePrefs(): VoicePrefs {
     const p = JSON.parse(raw) as Partial<VoicePrefs>;
     const d = DEFAULT_VOICE_PREFS;
     return {
-      autoSpeak: bool(p.autoSpeak, d.autoSpeak),
       volume: clamp(p.volume, 0, 1, d.volume),
       defaultRate: clamp(p.defaultRate, 0.5, 2, d.defaultRate),
       defaultPitch: clamp(p.defaultPitch, 0, 2, d.defaultPitch),
@@ -80,7 +91,6 @@ export function loadVoicePrefs(): VoicePrefs {
       interruptOnType: bool(p.interruptOnType, d.interruptOnType),
       continuousListening: bool(p.continuousListening, d.continuousListening),
       autoSendOnSilence: bool(p.autoSendOnSilence, d.autoSendOnSilence),
-      silenceTimeout: clamp(p.silenceTimeout, 500, 5000, d.silenceTimeout),
     };
   } catch {
     return { ...DEFAULT_VOICE_PREFS };

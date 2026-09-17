@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2, ImagePlus, X, HelpCircle } from 'lucide-react';
+import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2, ImagePlus, X, HelpCircle, Play, Download, Upload, Paperclip, AudioLines } from 'lucide-react';
+import { Section, Row, Slider } from './SettingsControls';
 import { fetchCharacterInfo, citationTag, type CharacterCandidate } from '../lib/characterFetch';
 import CharacterSearchModal from './CharacterSearchModal';
 import { createCharacter, listCharacters, deleteCharacter, PORTRAIT_MAX_KB, EMOTION_PORTRAIT_MAX_KB, SEED_CONTEXT_LIMIT, type SavedCharacter, type BehaviorMode, type VoiceSettings } from '../lib/characterStore';
@@ -48,6 +49,8 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [voiceLang, setVoiceLang] = useState<string>('');
   const [voicePitch, setVoicePitch] = useState(1);
   const [voiceRate, setVoiceRate] = useState(1);
+  const [voiceVolume, setVoiceVolume] = useState(1);
+  const [voiceExpressiveness, setVoiceExpressiveness] = useState(100);
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
   const [showVoiceStudioHelp, setShowVoiceStudioHelp] = useState(false);
   const [showEmotionSlotsHelp, setShowEmotionSlotsHelp] = useState(false);
@@ -106,6 +109,8 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
       setVoiceLang(parsed.lang || '');
       setVoicePitch(parsed.pitch);
       setVoiceRate(parsed.rate);
+      setVoiceVolume(parsed.volume ?? 1);
+      setVoiceExpressiveness(parsed.expressiveness ?? 100);
     } catch (err) {
       console.warn('[CharacterSelect] Voice package import failed:', err);
       setVoicePackageError('Could not read that file.');
@@ -250,9 +255,14 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
       source = info ? citationTag(info) : 'user-provided';
     }
 
-    const hasVoiceSettings = voiceName !== '' || voicePitch !== 1 || voiceRate !== 1;
+    const hasVoiceSettings = voiceName !== '' || voicePitch !== 1 || voiceRate !== 1 || voiceVolume !== 1 || voiceExpressiveness !== 100;
     const voiceSettings: VoiceSettings | undefined = hasVoiceSettings
-      ? { voiceName: voiceName || undefined, lang: voiceLang || undefined, pitch: voicePitch, rate: voiceRate }
+      ? {
+          voiceName: voiceName || undefined, lang: voiceLang || undefined,
+          pitch: voicePitch, rate: voiceRate,
+          volume: voiceVolume !== 1 ? voiceVolume : undefined,
+          expressiveness: voiceExpressiveness !== 100 ? voiceExpressiveness : undefined,
+        }
       : undefined;
 
     const character = createCharacter({
@@ -627,9 +637,10 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => setShowVoiceStudio(v => !v)}
-                    className="text-xs text-slate-500 hover:text-amber-300 transition-colors flex items-center gap-1"
+                    className="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1.5"
                   >
-                    {showVoiceStudio ? '\u2212' : '+'} Set a voice (optional)
+                    <AudioLines size={13} />
+                    {showVoiceStudio ? 'Hide voice studio' : 'Set a voice (optional)'}
                   </button>
                   <button
                     type="button"
@@ -641,87 +652,118 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                   </button>
                 </div>
                 {showVoiceStudio && (
-                  <div className="mt-2.5 bg-slate-900/50 border border-slate-700 rounded-lg p-3 space-y-3">
-                    <div>
-                      <span className="text-xs font-medium text-slate-500 mb-1.5 block">System voice</span>
-                      <select
-                        value={voiceName}
-                        onChange={(e) => {
-                          const name = e.target.value;
-                          setVoiceName(name);
-                          const match = availableVoices.find(v => v.name === name);
-                          setVoiceLang(match?.lang || '');
-                        }}
-                        className="w-full bg-slate-900/70 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all"
-                      >
-                        <option value="">Browser default</option>
-                        {availableVoices.map(v => (
-                          <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <label className="block">
-                        <span className="text-xs font-medium text-slate-500 mb-1.5 flex justify-between">
-                          <span>Pitch</span><span>{voicePitch.toFixed(1)}</span>
-                        </span>
-                        <input
-                          type="range" min={0} max={2} step={0.1}
-                          value={voicePitch}
-                          onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
-                          className="w-full accent-amber-500"
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="text-xs font-medium text-slate-500 mb-1.5 flex justify-between">
-                          <span>Speed</span><span>{voiceRate.toFixed(1)}</span>
-                        </span>
-                        <input
-                          type="range" min={0.5} max={2} step={0.1}
-                          value={voiceRate}
-                          onChange={(e) => setVoiceRate(parseFloat(e.target.value))}
-                          className="w-full accent-amber-500"
-                        />
-                      </label>
-                    </div>
-                    <button
-                      onClick={() => speak(`Hello, I'm ${characterName.trim() || 'your character'}.`, { voiceName: voiceName || undefined, pitch: voicePitch, rate: voiceRate })}
-                      className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg px-3 py-1.5 transition-colors"
-                    >
-                      ▶ Preview voice
-                    </button>
-
-                    {/* Voice package export/import - reuse a tuned voice across characters */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        onClick={() => downloadVoicePackage({ voiceName: voiceName || undefined, lang: voiceLang || undefined, pitch: voicePitch, rate: voiceRate }, characterName.trim() || undefined)}
-                        className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg px-3 py-1.5 transition-colors"
-                      >
-                        ⬇ Export voice
-                      </button>
-                      <button
-                        onClick={() => voicePackageInputRef.current?.click()}
-                        className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg px-3 py-1.5 transition-colors"
-                      >
-                        ⬆ Import voice
-                      </button>
-                      <input
-                        ref={voicePackageInputRef}
-                        type="file"
-                        accept="application/json"
-                        className="hidden"
-                        onChange={(e) => handleVoicePackageFile(e.target.files?.[0])}
+                  <div className="mt-2.5 glass-panel border rounded-lg px-3">
+                    <Section title="VOICE" icon={<AudioLines size={14} />}>
+                      <Row
+                        label="System voice"
+                        control={
+                          <select
+                            value={voiceName}
+                            onChange={(e) => {
+                              const name = e.target.value;
+                              setVoiceName(name);
+                              const match = availableVoices.find(v => v.name === name);
+                              setVoiceLang(match?.lang || '');
+                            }}
+                            className="bg-slate-900/60 border border-slate-600/70 rounded-lg px-2.5 py-1.5 text-[12px] text-slate-200 focus:outline-none focus:border-slate-400 cursor-pointer max-w-[180px]"
+                          >
+                            <option value="">Browser default</option>
+                            {availableVoices.map(v => (
+                              <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
+                            ))}
+                          </select>
+                        }
                       />
-                    </div>
-                    {voicePackageError && (
-                      <p className="text-[11px] text-red-400">{voicePackageError}</p>
-                    )}
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Export saves this voice's settings so you can reuse them on another character. It doesn't install a new voice on any device — just carries the pitch, speed, and voice choice, matched to the closest available voice on import.
-                    </p>
+                      <Row
+                        label="Pitch"
+                        stack
+                        control={
+                          <Slider
+                            ariaLabel="Voice pitch"
+                            value={voicePitch}
+                            min={0} max={2} step={0.1} unit="" decimals={1}
+                            onChange={setVoicePitch}
+                          />
+                        }
+                      />
+                      <Row
+                        label="Speed"
+                        stack
+                        control={
+                          <Slider
+                            ariaLabel="Voice speed"
+                            value={voiceRate}
+                            min={0.5} max={2} step={0.1} unit="" decimals={1}
+                            onChange={setVoiceRate}
+                          />
+                        }
+                      />
+                      <Row
+                        label="Volume"
+                        stack
+                        control={
+                          <Slider
+                            ariaLabel="Voice volume"
+                            value={Math.round(voiceVolume * 100)}
+                            min={0} max={100} step={5} unit="%"
+                            onChange={(n) => setVoiceVolume(n / 100)}
+                          />
+                        }
+                      />
+                      <Row
+                        label="Expressiveness"
+                        hint="How much emotion shifts pitch/pace while speaking"
+                        stack
+                        control={
+                          <Slider
+                            ariaLabel="Voice expressiveness"
+                            value={voiceExpressiveness}
+                            min={0} max={150} step={5} unit="%"
+                            onChange={setVoiceExpressiveness}
+                          />
+                        }
+                      />
+                      <div className="pt-1">
+                        <button
+                          onClick={() => speak(`Hello, I'm ${characterName.trim() || 'your character'}.`, { voiceName: voiceName || undefined, pitch: voicePitch, rate: voiceRate, volume: voiceVolume })}
+                          className="glass-surface flex items-center gap-1.5 text-[12px] text-slate-200 rounded-lg px-3 py-1.5"
+                        >
+                          <Play size={12} /> Preview voice
+                        </button>
+                      </div>
+                    </Section>
 
-                    {/* Analysis-assist: measure a sample, suggest slider values. NOT cloning. */}
-                    <div className="pt-2.5 border-t border-slate-700/60">
+                    <Section title="SHARE" hint="Reuse a tuned voice across characters" icon={<Upload size={14} />} defaultOpen={false}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => downloadVoicePackage({ voiceName: voiceName || undefined, lang: voiceLang || undefined, pitch: voicePitch, rate: voiceRate, volume: voiceVolume, expressiveness: voiceExpressiveness }, characterName.trim() || undefined)}
+                          className="flex items-center gap-1.5 text-[12px] bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-lg px-3 py-1.5 transition-colors"
+                        >
+                          <Download size={12} /> Export voice
+                        </button>
+                        <button
+                          onClick={() => voicePackageInputRef.current?.click()}
+                          className="flex items-center gap-1.5 text-[12px] bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-lg px-3 py-1.5 transition-colors"
+                        >
+                          <Upload size={12} /> Import voice
+                        </button>
+                        <input
+                          ref={voicePackageInputRef}
+                          type="file"
+                          accept="application/json"
+                          className="hidden"
+                          onChange={(e) => handleVoicePackageFile(e.target.files?.[0])}
+                        />
+                      </div>
+                      {voicePackageError && (
+                        <p className="text-[11px] text-red-400 mt-1.5">{voicePackageError}</p>
+                      )}
+                      <p className="text-[11px] text-slate-500 leading-relaxed mt-2">
+                        Export saves this voice's settings so you can reuse them on another character. It doesn't install a new voice on any device — just carries pitch, speed, volume and expressiveness, matched to the closest available voice on import.
+                      </p>
+                    </Section>
+
+                    <Section title="ANALYZE" hint="Estimate a starting point from a sample clip" icon={<Paperclip size={14} />} defaultOpen={false}>
                       <p className="text-[11px] text-slate-500 mb-2 leading-relaxed">
                         Have an audio clip of how this character should sound? Upload it and we'll suggest pitch/speed starting points — this doesn't clone the voice, it just estimates and tunes the sliders above.
                       </p>
@@ -729,9 +771,9 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                         <button
                           onClick={() => voiceSampleInputRef.current?.click()}
                           disabled={isAnalyzingVoice}
-                          className="text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-lg px-3 py-1.5 transition-colors"
+                          className="flex items-center gap-1.5 text-[12px] bg-slate-800/80 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-lg px-3 py-1.5 transition-colors"
                         >
-                          {isAnalyzingVoice ? 'Analyzing…' : '📎 Upload sample'}
+                          <Paperclip size={12} /> {isAnalyzingVoice ? 'Analyzing…' : 'Upload sample'}
                         </button>
                         <input
                           ref={voiceSampleInputRef}
@@ -758,13 +800,14 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                               setVoicePitch(voiceAnalysisResult.suggestedPitch);
                               setVoiceRate(voiceAnalysisResult.suggestedRate);
                             }}
-                            className="text-amber-300 hover:text-amber-200 underline underline-offset-2"
+                            className="underline underline-offset-2"
+                            style={{ color: 'var(--user-accent)' }}
                           >
                             Apply suggested pitch ({voiceAnalysisResult.suggestedPitch.toFixed(1)}) & speed ({voiceAnalysisResult.suggestedRate.toFixed(1)})
                           </button>
                         </div>
                       )}
-                    </div>
+                    </Section>
                   </div>
                 )}
               </div>
