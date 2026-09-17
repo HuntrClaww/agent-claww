@@ -22,7 +22,7 @@
  * gets closest, it does not fabricate a copy of the speaker.
  */
 
-type F32 = Float32Array<ArrayBuffer>;
+type F32 = Float32Array<ArrayBufferLike>;
 
 // ============================================================================
 // FFT — iterative radix-2 Cooley-Tukey, in-place on separate real/imag arrays.
@@ -98,6 +98,23 @@ function clampBuffer(out: F32): F32 {
   for (let i = 0; i < out.length; i++) {
     if (out[i] > 1) out[i] = 1; else if (out[i] < -1) out[i] = -1;
   }
+  return out;
+}
+
+// ============================================================================
+// Resample — linear-interpolation rate conversion. Used to normalize every
+// recorded/uploaded clip onto one fixed working rate regardless of what the
+// device's mic or the uploaded file happened to use, which keeps storage
+// size predictable and every effect's frequency-dependent tuning (LPC order,
+// vocoder bands, filter cutoffs) meaningful across different sources.
+// ============================================================================
+
+export function resampleLinear(input: F32, fromRate: number, toRate: number): F32 {
+  if (fromRate === toRate) return input.slice();
+  const ratio = fromRate / toRate;
+  const outLength = Math.round(input.length / ratio);
+  const out = new Float32Array(outLength);
+  for (let i = 0; i < outLength; i++) out[i] = sampleAt(input, i * ratio);
   return out;
 }
 
@@ -418,7 +435,7 @@ export function vocode(input: F32, sampleRate: number, carrierHz = 110, bandCoun
     const q = 3;
 
     const inputBand = applyBiquad(input, 'bandpass', centerFreq, sampleRate, q);
-    let envelope = new Float32Array(inputBand.length);
+    let envelope: F32 = new Float32Array(inputBand.length);
     for (let i = 0; i < envelope.length; i++) envelope[i] = Math.abs(inputBand[i]);
     envelope = applyBiquad(envelope, 'lowpass', 25, sampleRate, 0.707);
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2, ImagePlus, X, HelpCircle, Play, Download, Upload, Paperclip, AudioLines } from 'lucide-react';
+import { Search, Shuffle, Lock, BookLock, Sparkles, ArrowRight, GitFork, Trash2, ImagePlus, X, HelpCircle, Play, Download, Upload, Paperclip, AudioLines, Wand2 } from 'lucide-react';
+import VoiceLab from './VoiceLab';
 import { Section, Row, Slider } from './SettingsControls';
 import { fetchCharacterInfo, citationTag, type CharacterCandidate } from '../lib/characterFetch';
 import CharacterSearchModal from './CharacterSearchModal';
@@ -51,6 +52,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
   const [voiceRate, setVoiceRate] = useState(1);
   const [voiceVolume, setVoiceVolume] = useState(1);
   const [voiceExpressiveness, setVoiceExpressiveness] = useState(100);
+  const [showVoiceLab, setShowVoiceLab] = useState(false);
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
   const [showVoiceStudioHelp, setShowVoiceStudioHelp] = useState(false);
   const [showEmotionSlotsHelp, setShowEmotionSlotsHelp] = useState(false);
@@ -730,7 +732,17 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                         >
                           <Play size={12} /> Preview voice
                         </button>
+                        <button
+                          onClick={() => setShowVoiceLab(true)}
+                          className="glass-surface flex items-center gap-1.5 text-[12px] text-slate-200 rounded-lg px-3 py-1.5"
+                          title="Record or upload a clip and creatively process it - separate from the Web Speech voice above"
+                        >
+                          <Wand2 size={12} /> Open Voice Lab
+                        </button>
                       </div>
+                      <p className="text-[11px] text-slate-500 mt-1.5">
+                        Voice Lab records/processes an audio clip you can save and play back - it doesn't change what this character sounds like while chatting (the sliders above do that).
+                      </p>
                     </Section>
 
                     <Section title="SHARE" hint="Reuse a tuned voice across characters" icon={<Upload size={14} />} defaultOpen={false}>
@@ -900,6 +912,14 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
           onClose={() => setShowCharacterSearch(false)}
           onSelect={handleCharacterSearchSelect}
           onManualFallback={() => { setShowCharacterSearch(false); setShowManualDetails(true); }}
+        />
+      )}
+
+      {showVoiceLab && (
+        <VoiceLab
+          characterId={null}
+          characterName={characterName.trim() || undefined}
+          onClose={() => setShowVoiceLab(false)}
         />
       )}
     </div>
