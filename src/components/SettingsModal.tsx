@@ -803,7 +803,8 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
           </button>
           <button 
             onClick={handleSave}
-            className="px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-medium transition-colors"
+            className="glass-surface glow-active px-4 py-2 rounded-lg text-white font-medium"
+            style={{ background: 'var(--user-accent)' }}
           >
             Save Settings
           </button>

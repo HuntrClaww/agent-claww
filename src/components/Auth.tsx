@@ -37,7 +37,7 @@ export default function Auth({ onLogin, onGuest }: { onLogin: () => void, onGues
 
                 <button
                     onClick={onGuest}
-                    className="w-full flex items-center justify-center gap-2 text-white py-3 rounded-lg font-medium transition-all shadow-md hover:shadow-lg hover:brightness-110"
+                    className="glow-active w-full flex items-center justify-center gap-2 text-white py-3 rounded-lg font-medium transition-all hover:brightness-110"
                     style={{ backgroundImage: 'linear-gradient(90deg, var(--user-accent), var(--user-accent-secondary))' }}
                 >
                     <Zap size={17} /> Start as Guest (Local Storage)

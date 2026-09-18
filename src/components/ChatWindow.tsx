@@ -861,13 +861,16 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                   <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
                     
                     {/* Avatar */}
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 text-xs ${
-                      msg.role === 'user'
-                        ? 'bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg'
-                        : activeMode?.kind === 'personality'
-                          ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-slate-900 shadow-lg'
-                          : 'bg-gradient-to-br from-cyan-500 to-teal-600 text-slate-900 shadow-lg'
-                    }`}>
+                    <div
+                      style={msg.role === 'user' ? { background: 'linear-gradient(135deg, var(--user-accent), var(--user-accent-secondary))' } : undefined}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 text-xs bubble-depth ${
+                        msg.role === 'user'
+                          ? 'text-white'
+                          : activeMode?.kind === 'personality'
+                            ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-slate-900'
+                            : 'bg-gradient-to-br from-cyan-500 to-teal-600 text-slate-900'
+                      }`}
+                    >
                       {msg.role === 'user'
                         ? 'U'
                         : activeMode?.kind === 'personality'
@@ -889,10 +892,10 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                             ? { borderLeft: `3px solid ${activeThemeColor || 'var(--user-accent)'}` }
                             : undefined
                       }
-                      className={`p-4 rounded-2xl max-w-[80%] transition-all duration-200 ${
+                      className={`p-4 rounded-2xl max-w-[80%] transition-all duration-200 bubble-depth ${
                         msg.role === 'user' 
-                          ? 'text-white rounded-tr-sm shadow-md hover:shadow-lg' 
-                          : 'bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-600 text-slate-100 rounded-tl-sm shadow-md hover:shadow-lg backdrop-blur-sm'
+                          ? 'text-white rounded-tr-sm' 
+                          : 'bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-600 text-slate-100 rounded-tl-sm backdrop-blur-sm'
                       }`}
                     >
                       <p className="leading-relaxed whitespace-pre-wrap text-sm">
@@ -1019,7 +1022,7 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                       onClick={handleSend}
                       disabled={!inputText.trim()}
                       style={{ background: activeThemeColor || 'var(--user-accent)' }}
-                      className="glass-surface disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium disabled:hover:shadow-none"
+                      className="glass-surface glow-active disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium disabled:hover:shadow-none"
                     >
                       Send
                     </button>
