@@ -218,7 +218,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
                   onClick={() => setActiveTab(tab.id)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left ${
                     activeTab === tab.id
-                      ? 'bg-teal-500/10 text-teal-300 border border-teal-500/30'
+                      ? 'opt-selected border text-slate-100'
                       : 'text-slate-400 hover:bg-slate-700/50 hover:text-slate-200 border border-transparent'
                   }`}
                 >

@@ -398,9 +398,178 @@ html.theme-oled .bg-slate-700\/50 { background-color: rgba(255, 255, 255, 0.06);
 
 /* Selected-option cards in Settings. Was a white border + white tint,
    which is invisible against light mode's white panels - keyed to the
-   user's accent instead so it reads in every theme. */
+   user's accent instead so it reads in every theme. Extended with a soft
+   outer glow (reference-image pass, 2026-09-14) so a selected preset
+   reads as genuinely "lit up" rather than just outlined - matches every
+   other active/selected state across the app now. */
 .opt-selected {
     border-color: var(--user-accent);
     background-color: color-mix(in srgb, var(--user-accent) 14%, transparent);
+    box-shadow:
+        0 0 0 1px var(--user-accent) inset,
+        0 0 14px -3px var(--user-accent);
+    transition: box-shadow var(--motion-base) var(--motion-ease);
+}
+html.reduce-effects .opt-selected,
+html.motion-none .opt-selected {
     box-shadow: 0 0 0 1px var(--user-accent) inset;
+}
+
+/* ==========================================================================
+   RAISED GLASS + GLOW SYSTEM (2026-09-14, reference-image pass)
+   Arthur shared reference UI kits (embossed/glowing glass controls, a Y2K
+   holographic/chrome design-system sheet, ChatGPT's glowing-orb hero
+   pattern, and an orbital-glow concept app) and asked for the techniques
+   captured, not the images copied literally. This section is the shared
+   foundation the hero components below build on.
+   ========================================================================== */
+
+/* .glass-surface got a real bottom shadow (not just inset highlights), so
+   raised elements read as sitting slightly above the surface - the
+   "embossed glass pebble" look in the reference kit - rather than just
+   being tinted and blurred flat panels. */
+.glass-surface {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, calc(0.25 * var(--glass-strength))),
+        inset 0 0 0 1px rgba(255, 255, 255, calc(0.04 * var(--glass-strength))),
+        0 1px 0 rgba(255, 255, 255, calc(0.06 * var(--glass-strength))),
+        0 8px 20px -6px rgba(0, 0, 0, 0.5);
+}
+.glass-surface:hover {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, calc(0.35 * var(--glass-strength))),
+        inset 0 0 0 1px rgba(255, 255, 255, calc(0.06 * var(--glass-strength))),
+        0 1px 0 rgba(255, 255, 255, calc(0.08 * var(--glass-strength))),
+        0 10px 24px -6px rgba(0, 0, 0, 0.55);
+}
+
+/* .glow-active: the reference kit's signature move - a control in its
+   normal (selected/playing/on) state gets a genuine colored HALO, not
+   just a border/tint change. Reusable on any element: a nav item, a
+   toggle, a primary button, a selected preset chip. */
+.glow-active {
+    box-shadow:
+        0 0 0 1px var(--user-accent),
+        0 0 16px -2px var(--user-accent),
+        0 0 32px -4px var(--user-accent);
+    transition: box-shadow var(--motion-base) var(--motion-ease);
+}
+html.reduce-effects .glow-active,
+html.motion-none .glow-active {
+    box-shadow: 0 0 0 1px var(--user-accent);
+}
+
+/* .text-holographic: a shifting, multi-hue sheen for headings/wordmarks -
+   the "Holographic Gradients" + "Chrome Typography" callouts from the Y2K
+   reference sheet, without going fully chrome/metallic (which reads odd
+   at UI-text sizes; the iridescent color shift is the part that
+   translates well). Slow animation, not a strobing effect. */
+.text-holographic {
+    background-image: linear-gradient(
+        100deg,
+        var(--user-accent) 0%,
+        #f0abfc 22%,
+        var(--user-accent-secondary) 45%,
+        #fbbf24 68%,
+        var(--user-accent) 100%
+    );
+    background-size: 300% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: holo-shift 8s ease-in-out infinite;
+}
+@keyframes holo-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+html.reduce-effects .text-holographic,
+html.motion-none .text-holographic {
+    animation: none;
+    background-position: 30% 50%;
+}
+@media (prefers-reduced-motion: reduce) {
+    .text-holographic { animation: none; background-position: 30% 50%; }
+}
+
+/* .orb-glow: the glowing 3D sphere treatment behind a brand mark (the
+   ChatGPT-hero and Orbit-app reference images both center on one). Three
+   soft layered radial glows plus a slow breathing pulse read as a
+   luminous orb without needing an actual 3D renderer. */
+.orb-glow {
+    position: relative;
+}
+.orb-glow::before {
+    content: '';
+    position: absolute;
+    inset: -40%;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 35% 30%, rgba(255,255,255,0.5), transparent 35%),
+        radial-gradient(circle at 50% 50%, var(--user-accent), transparent 65%);
+    filter: blur(18px);
+    opacity: 0.75;
+    animation: orb-breathe 3.6s ease-in-out infinite;
+    z-index: -1;
+}
+@keyframes orb-breathe {
+    0%, 100% { transform: scale(1); opacity: 0.65; }
+    50%      { transform: scale(1.08); opacity: 0.9; }
+}
+html.reduce-effects .orb-glow::before,
+html.motion-none .orb-glow::before {
+    animation: none;
+}
+
+/* .orbit-ring: a thin elliptical ring decoration, from the Orbit-style
+   reference - purely decorative, sits behind a hero orb. Two rings at
+   different tilts/speeds avoid looking like one static circle. */
+.orbit-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid var(--user-accent);
+    opacity: 0.35;
+    pointer-events: none;
+}
+.orbit-ring.ring-a { animation: orbit-spin 14s linear infinite; }
+.orbit-ring.ring-b { animation: orbit-spin 20s linear infinite reverse; }
+@keyframes orbit-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+html.reduce-effects .orbit-ring,
+html.motion-none .orbit-ring {
+    animation: none;
+}
+
+/* .sparkle: a tiny four-point flare accent (the reference sheet's "Lens
+   Flares" section) - used sparingly, one or two per screen at most, near
+   a glowing focal point. A CSS shape, not an image asset. */
+.sparkle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+}
+.sparkle::before, .sparkle::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, #fff 0%, transparent 60%);
+    opacity: 0.85;
+}
+.sparkle::before { clip-path: polygon(50% 0%, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0% 50%, 42% 42%); }
+.sparkle::after { transform: rotate(45deg) scale(0.6); }
+
+/* Suggestion chips (Generic Mode hero) - compact, glass, glow gently on
+   hover so they read as inviting/interactive without needing the full
+   .glow-active halo (that's reserved for actually-active/selected state). */
+.suggestion-chip {
+    transition: box-shadow var(--motion-base) var(--motion-ease),
+                transform var(--motion-fast) var(--motion-ease),
+                border-color var(--motion-base) var(--motion-ease);
+}
+.suggestion-chip:hover {
+    box-shadow: 0 0 0 1px var(--user-accent), 0 0 20px -6px var(--user-accent);
+    transform: translateY(-1px);
 }

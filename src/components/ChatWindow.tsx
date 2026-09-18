@@ -8,6 +8,7 @@ import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX, M
 import { APIClient, detectAPIProvider, type ChatTurn } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag, type CharacterCandidate } from '../lib/characterFetch';
 import CharacterSearchModal from './CharacterSearchModal';
+import GenericModeHero from './GenericModeHero';
 import { getCharacter, resolvePortraitForEmotion, type VoiceSettings } from '../lib/characterStore';
 import { loadThread, saveThread, personalityThreadKey, GENERIC_THREAD_KEY, type Message } from '../lib/chatLogStore';
 import { parseEmotion, EMOTION_TAG_INSTRUCTION, type Emotion } from '../lib/emotionDetect';
@@ -836,8 +837,23 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
             {/* Dynamic Chat History Area */}
             <div className="flex-1 p-6 overflow-y-auto">
               <div className="flex flex-col space-y-6 max-w-3xl mx-auto">
-                
-                {messages.map((msg) => {
+
+                {(() => {
+                  const showHero = activeMode.kind === 'generic' && messages.length === 1 && messages[0].role === 'ai';
+                  return showHero ? (
+                    <GenericModeHero
+                      onPickPrompt={(p) => setInputText(p)}
+                      onOpenSearch={() => setShowCharacterSearch(true)}
+                    />
+                  ) : null;
+                })()}
+
+                {messages
+                  // The hero above replaces (says the same thing as, in
+                  // friendlier words) the synthetic first greeting bubble -
+                  // showing both would just repeat the welcome twice.
+                  .filter((_, i) => !(i === 0 && activeMode.kind === 'generic' && messages.length === 1 && messages[0].role === 'ai'))
+                  .map((msg) => {
                   const msgFlaggedTokens = msg.role === 'user'
                     ? flagUnusualTokens(msg.content, flaggingAllowlist).map(t => t.token)
                     : [];
