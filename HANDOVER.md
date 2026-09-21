@@ -34,6 +34,26 @@
 
 ## 2. The Two-Sided Coin (Core Vision — Do Not Drift From This)
 
+> **⚠️ 2026-09-15 clarification — read before assuming this section is
+> off-limits.** Arthur explicitly said the "Two sides. One coin."
+> **framing/slogan and its literal coin-flip UI presentation were
+> never meant to be sacred** — he gave it early as a reference point,
+> not a permanent identity, and it's now read back to him as more
+> "weirdly connected to coins" than intended. **What this section
+> actually documents and what stays untouched is the FUNCTIONAL split
+> below** — two chat modes with genuinely different rules (Generic:
+> no lock-in, switch anytime; Personality: one locked character,
+> immutable once created, Lore-Locked vs Open-World). Arthur has NOT
+> asked to remove that distinction. What IS explicitly open for
+> reconsideration: how a user is introduced to and navigates between
+> the two modes — the current "Two sides. One coin." landing screen
+> presenting an immediate two-button choice is exactly the piece he
+> wants reimagined, potentially completely differently, while the
+> glass/glow visual language (Sections 10+) stays. See the new
+> subsection at the top of Section 10 for the full detail — do not
+> start that redesign without reading it, and do not assume "keep the
+> two-sided coin" means "keep this screen as it is."
+
 ### SIDE A — Generic Mode (cyan)
 - No character lock. No session commitment.
 - User types "be Sherlock" / "become Naruto" / "switch to X" → AI detects the switch, calls `characterFetch.ts`, embodies the character on the spot.
@@ -372,6 +392,9 @@ StageEgo already proves this exact pattern in `characterFetch.ts` (try source A 
 | 53 | **BUG-HUNT PASS (2026-09-14, Arthur-requested follow-up):** went looking for real correctness bugs, not just missing features | avatarGenerate.ts, SettingsModal.tsx, apiValidator.ts, apiClient.ts | After confirming the avatar creator and voice tools were both actually there (Arthur, after a fresh pull), asked for a continued deep-dive fixing anything else found along the way. Confirmed Known Issue #14's Oct 2 2026 shutdown date directly against Google's official deprecations page and fixed it (see #14). Grepped for TODO/FIXME markers (none) and every JSON.parse / localStorage.setItem call site in src/, checking each for try/catch guarding rather than trusting the surrounding comments: found two real instances of the same bug class Known Issue items already fixed elsewhere on 2026-09-10 (unguarded localStorage writes throwing an uncaught QuotaExceededError; response.json() throwing on a non-JSON error body) that were missed in those earlier passes because they were scoped to specific files rather than swept project-wide. Fixed both: `SettingsModal.tsx`'s `handleSave()` now catches storage errors and shows a banner (matching `UserProfileModal.tsx`'s existing pattern) instead of failing silently; `apiValidator.ts`'s 4 provider key checks now reuse `apiClient.ts`'s `parseErrorMessage()` helper (newly exported) instead of each duplicating the same unguarded `response.json()` call. Also re-verified addEventListener/removeEventListener stay balanced (8/8) after all the character-search and redesign work. Nothing else suspicious turned up in this pass; `CharacterSearchModal.tsx` was read in full and looks solid. |
 | 54 | **VOICE STUDIO:** wired 7 disconnected global voice settings into real behavior, removed one that couldn't be, added Volume + Expressiveness as genuine per-character parameters, modernized the panel | ChatWindow.tsx, voiceEngine.ts, voicePrefs.ts, SettingsModal.tsx, CharacterSelect.tsx, SettingsControls.tsx | Arthur said "time to make the voice studio" - investigating first (rather than assuming it needed building from scratch) found it already existed and was fairly complete functionally, but two real problems: the global Voice & Speech settings built earlier that same day were entirely disconnected from actual speech behavior (see Known Issue #24 for the full breakdown), and the per-character Voice Studio panel still had raw symbol glyphs (a paperclip emoji among them) and old card styling left over from before the redesign. Fixed both. Also gave `SettingsControls.tsx`'s `Slider` a `decimals` prop after an early attempt to reuse it for Pitch/Speed forced continuous values through an integer-plus-unit shape that would have displayed as nonsense like "14x0.1" - worth remembering when reusing that primitive for other continuous (non-percentage) values later. |
 | 55 | **NEW FEATURE:** Voice FX engine + Voice Lab - real DSP voice processing, not a UI shell | voiceFX.ts, voiceStorage.ts, VoiceLab.tsx, CharacterSelect.tsx | Arthur asked to "let loose" creatively on ways to reshape a voice via code alone (no external tools/models), then asked for the full pipeline: upload/record -> analyze -> replicator -> tweak -> save (to "connected public cloud storage"). Built as two pieces: (1) `voiceFX.ts` - a from-scratch DSP engine (FFT, biquad filters, LPC/Levinson-Durbin, granular pitch shift, LPC-based formant shift, ring mod, band vocoder, bitcrusher, algorithmic reverb, chorus, 10 named presets) as pure Float32Array functions with zero DOM dependency, rigorously verified against real measured acoustic properties via a Node test harness rather than assumed correct - caught and fixed 2 real bugs this way (bitcrush's level formula was 2x too fine for a signed range; telephoneEffect's tanh soft-clip could exceed [-1,1]). (2) `VoiceLab.tsx` + `voiceStorage.ts` - the interactive UI, IndexedDB-backed (not localStorage - PCM audio is too large), with a 3rd real bug caught by testing an actual save/close/reopen cycle in a browser (see Known Issue #25). Two things reframed honestly rather than faked, both stated plainly in-product: "Replicator" became "Auto-Match" (suggests presets from the sample's own measured pitch, cannot reconstruct a specific voice - that needs a trained neural model, a different category of engineering entirely) and "cloud storage" became on-this-device IndexedDB + manual file export (StageEgo has no connected backend - Supabase sits unused per Known Issue #20, and this session couldn't even confirm whether a project exists, since that check needed a connector approval only Arthur can grant). Also stated plainly: this processes a recorded/uploaded clip into a saveable result, it does not make in-chat TTS speech route through these effects, since the browser's speechSynthesis output can't be captured/intercepted for post-processing - a platform wall, not a gap in this build. |
+| 56 | **REFERENCE-IMAGE PASS:** raised glass, glow-on-active, holographic text, Generic Mode hero orb | index.css, GenericModeHero.tsx (new), ChatWindow.tsx, SettingsModal.tsx | Arthur shared 4 mood-board images (glowing-purple glassmorphic kit, Y2K "Core Visual Characteristics" sheet, ChatGPT's glowing-orb empty state, an orbital mood-selector concept app) and asked for the techniques captured, not copied literally. Built: .glow-active (reusable colored halo for any active/selected control), .text-holographic (shifting multi-hue heading gradient), .orb-glow/.orbit-ring/.sparkle (pure-CSS glowing sphere + ring decoration, no image assets), and GenericModeHero.tsx replacing the plain "You're in Generic Mode..." bubble with the orb + 4 real quick-action chips (2 starter prompts, Surprise Me, Search — which genuinely opens the existing search modal). Explicitly used StageEgo's own BrandMark, not a copied logo, per Arthur's instruction. Verified across accent themes (reshot in Neon Purple to confirm nothing hardcoded) and mobile viewport. |
+| 57 | Extended the glow/depth system to every primary CTA and message bubble, fixed hardcoded-color leftovers found along the way | Auth.tsx, CharacterSelect.tsx, SettingsModal.tsx, ChatWindow.tsx | Send/Save Settings/Start as Guest got .glow-active (already accent-colored, previously ungl owed). Start Generic Chat/Lock In Character got a MATCHING glow in their OWN cyan/amber (not the user's arbitrary accent) since that color split is the two-sided-coin's actual meaning, not just decoration — verified this held under a Neon Purple accent theme, not just assumed from the code. New .bubble-depth (shadow-only, layers on top of each bubble's existing gradient instead of replacing it — .glass-surface directly would have overridden the AI bubble's slate gradient). Found and fixed 2 more hardcoded-teal leftovers: Save Settings button and the user's own avatar circle, both now accent-aware like everything else. |
+| 58 | Intensified glass/glow to actually match the reference kit's contrast level; consolidated 3 overlapping `.glass-surface` definitions into 1 | index.css, appearance.ts | Direct, honest feedback from Arthur: the ingredients were right but the previous two passes were too soft/subtle next to his reference image's near-neon intensity. Darkened every mode's base tokens (surface-panel/glass-tint/glass-tint-soft moved from a light-gray-tinted translucent overlay toward near-black) so there's real contrast for a glow to pop against. Rebuilt `.glow-active`/`.opt-selected` as 3-4 layered box-shadow rings (crisp edge + near bloom + bright mid glow + wide soft outer bloom) instead of one soft shadow. While touching `.glass-surface`, found 3 separate overlapping definitions of it had accumulated across the session's various passes (base/:hover/:active each redefined 2-3 times) — consolidated into one, and found+fixed a real gap in the process: `.glass-panel` had a reduce-effects fallback, `.glass-surface` (every button/chip/input) never did, so the accessibility toggle was incompletely wired. Verified by direct comparison against the reference image with Neon Purple selected. |
 
 ---
 
@@ -449,6 +472,18 @@ These are ideas discussed and agreed upon but not yet built. Do not discard.
 
 ## 9. Priority Order for Next Session
 
+> **This entire section is historical (2026-09-12) and superseded.**
+> Everything in it happened or was overtaken during the 2026-09-14/15
+> UI session: OpenRouter/Gemini status is stale (see Section 8),
+> Phase 8/6.5 real-device testing is still correctly deferred but for
+> a different reason now (see Section 10's new top subsection), and
+> the "garbled voice/TTS direction" question below was never resolved
+> and is still open — carry it forward, don't re-ask from scratch, but
+> don't let it block anything either since Arthur hasn't raised it
+> since. **For actual current priority, go to Section 10 and read the
+> subsection dated 2026-09-15 at the very top of it before anything
+> else in this file.** Kept below for history/context only.
+
 **2026-09-12 status (updated, later in the same session):** OpenRouter
 is **confirmed working** — Arthur tested it locally himself and called
 it "perfect." Gemini's key is still untested by him as of this
@@ -504,6 +539,83 @@ Here's exactly what's done and what's next:
 ---
 
 ## 10. UI/UX Redesign — Planning Phase (started 2026-09-12)
+
+### ⚠️ 2026-09-15 — MAJOR PIVOT FLAGGED: navigation/structure reconsideration, not just visual polish. READ THIS FIRST.
+
+**Where the visual pass actually landed:** after 3 iterative rounds
+(first pass → too subtle → intensity boost + darker base + consolidated
+3 overlapping `.glass-surface` definitions into 1), the glass/glow
+system now genuinely holds up against Arthur's reference image when
+compared directly with a Neon Purple accent selected (screenshot-
+verified, not just eyeballed from the code). **This part is in good
+shape. Do not restart it from scratch** — extend it, don't replace it.
+
+**Then Arthur raised something bigger**, expressed at length and with
+some emotional vulnerability about how much the visual first
+impression matters to him (he apologized for the pressure — he
+doesn't need to, this is a completely reasonable thing to care about,
+and the next session should treat it that way, not brush past it).
+The substance, extracted from a long dictated message:
+
+1. **The "Two sides. One coin." framing was never meant to be a fixed
+   slogan/identity.** He gave it early as a reference point for what
+   the app does (see the new warning at the top of Section 2), and in
+   hindsight it reads as more "connected to coins" than he intended.
+   He does **not** want the Generic/Personality mode distinction
+   removed — that functional split stays. What he wants reconsidered
+   is **the landing/entry experience** — right now the very first
+   thing a user does is choose between two options immediately, and
+   he wants a genuinely different way of navigating INTO the app,
+   not necessarily presenting that choice as the first, immediate
+   confrontation.
+2. **He wants it to feel more "advanced"** — his own words included
+   "maybe I want it too advanced" and "a little bit more of a
+   complicated process," said with real uncertainty about what that
+   actually means in concrete terms. **He is still exploring this
+   himself, not handing over a spec.** Don't over-interpret "advanced/
+   complicated" as literally more clicks or friction — read it as
+   "feels considered and rich," closer to how the glass/glow work
+   already reads once it's got the intensity right.
+3. **Keep the glass UI.** Explicitly confirmed: "thinking about still
+   maintaining the glass UI and everything else, those things, yeah, I
+   do want them kept." The structural rework is about layout/
+   navigation, not about abandoning the visual language just built.
+4. **Wants mobile and desktop to potentially diverge more than
+   responsive scaling currently allows** — genuinely different-feeling
+   experiences per platform, not just the same layout at different
+   sizes. He floated literally separating the codebase into distinct
+   folders for a desktop version and a mobile version.
+   **Flag this honestly to him before building it that way rather than
+   silently complying or silently overriding him:** two fully separate
+   codebases means every future feature and bugfix gets built and
+   fixed TWICE, forever — a real, ongoing maintenance cost, not a one-
+   time decision. The likely-better way to get the SAME outcome he
+   actually wants (tailored, platform-appropriate navigation and
+   layout, not identical-shape responsive scaling) is one shared data/
+   logic layer with genuinely different NAVIGATION/LAYOUT components
+   chosen per breakpoint (e.g. a persistent multi-pane desktop shell vs.
+   a mobile pattern like bottom tabs or swipeable full-screen views) —
+   this achieves "feels designed for this device" without permanently
+   doubling the maintenance burden. Propose this as the alternative,
+   but it's genuinely his call once he understands the tradeoff — don't
+   just override his stated preference either.
+
+**What the next session should actually do first — do NOT jump to
+code:** this is exactly the kind of big structural change that
+deserves a short planning/alignment pass before implementation, the
+same discipline this whole redesign started with and then explicitly
+set aside for the visual-only work. That override doesn't automatically
+extend to this new, bigger ask. Recommended first move: come back with
+2-3 concrete alternative navigation/entry concepts (even as a quick
+description or a small mockup) and ask Arthur which direction resonates,
+rather than guessing and building blind — getting the VISUAL intensity
+right took 3 rounds of iteration against a clear reference image; a
+navigation/structure change with a much vaguer, still-forming brief is
+higher-stakes to get wrong and harder to course-correct after the fact.
+One well-aimed clarifying exchange up front is worth far more here than
+in most of this session's other work.
+
+---
 
 **Status: implementation started 2026-09-14.** Arthur, speaking
 directly to the new session, explicitly said to skip the structural/
