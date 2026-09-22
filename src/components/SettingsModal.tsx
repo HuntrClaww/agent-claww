@@ -232,28 +232,28 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
           {/* Tab content */}
           <div className="flex-1 p-6 overflow-y-auto">
             {activeTab === 'general' && (
-              <div className="space-y-5">
-                <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Data & Privacy</h3>
-                <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-4">
-                  <p className="text-sm text-slate-300 mb-1">
-                    You have <span className="font-semibold text-teal-300">{characterCount}</span> saved character{characterCount === 1 ? '' : 's'}.
-                  </p>
-                  <p className="text-xs text-slate-500 mb-3">
-                    Characters, API keys, and preferences are stored only in this browser — never on a server.
-                  </p>
-                  <button
-                    onClick={handleClearAllCharacters}
-                    disabled={characterCount === 0}
-                    className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                      clearConfirm
-                        ? 'bg-red-600 hover:bg-red-500 text-white'
-                        : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-                    }`}
-                  >
-                    <Trash2 size={14} />
-                    {clearConfirm ? 'Click again to confirm — this cannot be undone' : 'Clear all characters'}
-                  </button>
-                </div>
+              <div className="-mt-1">
+                <Section title="DATA & PRIVACY" icon={<Settings2 size={14} />}>
+                  <Row
+                    label="Saved characters"
+                    hint="Characters, API keys, and preferences are stored only in this browser — never on a server"
+                    control={<span className="text-sm font-semibold" style={{ color: 'var(--user-accent)' }}>{characterCount}</span>}
+                  />
+                  <div className="pt-1">
+                    <button
+                      onClick={handleClearAllCharacters}
+                      disabled={characterCount === 0}
+                      className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                        clearConfirm
+                          ? 'bg-red-600 hover:bg-red-500 text-white'
+                          : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                      }`}
+                    >
+                      <Trash2 size={14} />
+                      {clearConfirm ? 'Click again to confirm — this cannot be undone' : 'Clear all characters'}
+                    </button>
+                  </div>
+                </Section>
               </div>
             )}
 
@@ -573,129 +573,117 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
             )}
 
             {activeTab === 'assistant' && (
-              <div className="space-y-5">
-                <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">API Configuration</h3>
-                <div>
-                  <label className="flex items-center gap-1.5 text-sm font-medium text-slate-300 mb-2">
-                    Your API Key (OpenAI / Anthropic / Google Gemini / OpenRouter)
-                    <button
-                      type="button"
-                      onClick={() => setShowKeyHelp(true)}
-                      title="How do I get an API key?"
-                      className="text-slate-500 hover:text-teal-300 transition-colors"
-                    >
-                      <HelpCircle size={15} />
-                    </button>
-                  </label>
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => {
-                      setApiKey(e.target.value);
-                      setValidationStatus('idle');
-                      setValidationMessage('');
-                    }}
-                    placeholder="Paste your API key here..."
-                    className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-slate-100 focus:outline-none focus:border-teal-500 transition-colors"
+              <div className="-mt-1">
+                <Section title="API CONFIGURATION" icon={<Bot size={14} />}>
+                  <Row
+                    label="API Key"
+                    hint="OpenAI / Anthropic / Google Gemini / OpenRouter — stored locally, never shared with servers"
+                    stack
+                    control={
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="password"
+                          value={apiKey}
+                          onChange={(e) => {
+                            setApiKey(e.target.value);
+                            setValidationStatus('idle');
+                            setValidationMessage('');
+                          }}
+                          placeholder="Paste your API key here..."
+                          className="flex-1 bg-slate-900/60 border border-slate-600/70 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-slate-400 transition-colors"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowKeyHelp(true)}
+                          title="How do I get an API key?"
+                          className="text-slate-500 hover:text-slate-200 transition-colors shrink-0"
+                        >
+                          <HelpCircle size={16} />
+                        </button>
+                      </div>
+                    }
                   />
-                  <p className="text-xs text-slate-500 mt-2">
-                    Keys are stored locally in your browser. Never shared with servers.
-                  </p>
 
                   {validationMessage && (
-                    <div className={`mt-3 p-3 rounded-lg flex items-center gap-2 text-sm ${
+                    <div className={`mt-1 p-2.5 rounded-lg flex items-center gap-2 text-[12px] ${
                       validationStatus === 'error' ? 'bg-red-900/20 text-red-300 border border-red-700' :
                       validationStatus === 'testing' ? 'bg-yellow-900/20 text-yellow-300 border border-yellow-700' :
                       'bg-green-900/20 text-green-300 border border-green-700'
                     }`}>
-                      {validationStatus === 'error' && <AlertCircle size={16} className="flex-shrink-0" />}
-                      {validationStatus === 'testing' && <Zap size={16} className="flex-shrink-0 animate-pulse" />}
-                      {validationStatus === 'success' && <CheckCircle size={16} className="flex-shrink-0" />}
+                      {validationStatus === 'error' && <AlertCircle size={14} className="flex-shrink-0" />}
+                      {validationStatus === 'testing' && <Zap size={14} className="flex-shrink-0 animate-pulse" />}
+                      {validationStatus === 'success' && <CheckCircle size={14} className="flex-shrink-0" />}
                       <span>{validationMessage}</span>
                     </div>
                   )}
 
-                  <button
-                    onClick={handleTestAPI}
-                    disabled={validationStatus === 'testing' || !apiKey.trim()}
-                    className="w-full mt-3 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-lg font-medium transition-colors text-slate-300 text-sm"
-                  >
-                    {validationStatus === 'testing' ? 'Testing...' : 'Test API Connection'}
-                  </button>
-                </div>
+                  <div className="pt-1">
+                    <button
+                      onClick={handleTestAPI}
+                      disabled={validationStatus === 'testing' || !apiKey.trim()}
+                      className="glass-surface disabled:opacity-50 disabled:cursor-not-allowed px-3.5 py-2 rounded-lg font-medium text-[12px] text-slate-200"
+                    >
+                      {validationStatus === 'testing' ? 'Testing...' : 'Test API Connection'}
+                    </button>
+                  </div>
+                </Section>
               </div>
             )}
 
             {activeTab === 'characters' && (
-              <div className="space-y-5">
-                <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Content</h3>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Profanity Tolerance
-                  </label>
-                  <select
-                    value={profanityFilter}
-                    onChange={(e) => setProfanityFilter(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-slate-100 focus:outline-none focus:border-teal-500 transition-colors"
-                  >
-                    <option value="strict">Strict (No profanity)</option>
-                    <option value="medium">Medium (Light slang allowed)</option>
-                    <option value="off">Off (Freedom to express)</option>
-                  </select>
-                  <p className="text-xs text-slate-500 mt-2">
-                    Applies to all characters. Manage individual characters (upload, fork, delete) from the character picker.
-                  </p>
-                </div>
+              <div className="-mt-1">
+                <Section title="CONTENT" icon={<Users size={14} />}>
+                  <Row
+                    label="Profanity Tolerance"
+                    hint="Applies to all characters. Manage individual characters (upload, fork, delete) from the character picker."
+                    control={
+                      <Select
+                        ariaLabel="Profanity tolerance"
+                        value={profanityFilter}
+                        options={[
+                          { id: 'strict', label: 'Strict' },
+                          { id: 'medium', label: 'Medium' },
+                          { id: 'off', label: 'Off' },
+                        ]}
+                        onChange={setProfanityFilter}
+                      />
+                    }
+                  />
+                </Section>
               </div>
             )}
 
             {activeTab === 'advanced' && (
-              <div className="space-y-5">
-                <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">Model Parameters</h3>
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-slate-300">Temperature</label>
-                    <span className="text-sm text-teal-300 font-mono">{temperature.toFixed(1)}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    value={temperature}
-                    onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                    className="w-full accent-teal-500"
-                  />
-                  <p className="text-xs text-slate-500 mt-2">
-                    Lower values (0–0.5) make responses more focused and predictable. Higher values (1.5–2.0) make them more varied and creative.
-                  </p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-700">
-                  <label className="flex items-center justify-between cursor-pointer">
-                    <div className="pr-4">
-                      <span className="text-sm font-medium text-slate-300">Reduce Visual Effects</span>
-                      <p className="text-xs text-slate-500 mt-1">
-                        Turns off the glass-blur and glow animations on buttons and the input field. Full effects are on by default — switch this on only if the app feels slow or laggy on your device.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={reduceEffects}
-                      onClick={() => setReduceEffects(v => !v)}
-                      className={`shrink-0 relative w-11 h-6 rounded-full transition-colors ${
-                        reduceEffects ? 'bg-teal-600' : 'bg-slate-600'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                          reduceEffects ? 'translate-x-5' : 'translate-x-0'
-                        }`}
+              <div className="-mt-1">
+                <Section title="MODEL PARAMETERS" icon={<SlidersHorizontal size={14} />}>
+                  <Row
+                    label="Temperature"
+                    hint="Lower (0–0.5) is more focused and predictable. Higher (1.5–2.0) is more varied and creative."
+                    stack
+                    control={
+                      <Slider
+                        ariaLabel="Model temperature"
+                        value={temperature}
+                        min={0} max={2} step={0.1} unit="" decimals={1}
+                        onChange={setTemperature}
                       />
-                    </button>
-                  </label>
-                </div>
+                    }
+                  />
+                </Section>
+
+                <Section title="PERFORMANCE" icon={<Zap size={14} />}>
+                  <Row
+                    label="Reduce Visual Effects"
+                    hint="Turns off glass-blur and glow animations. On by default — switch this on only if the app feels slow on your device."
+                    control={
+                      <Toggle
+                        ariaLabel="Reduce visual effects"
+                        checked={reduceEffects}
+                        onChange={setReduceEffects}
+                      />
+                    }
+                  />
+                </Section>
               </div>
             )}
 
