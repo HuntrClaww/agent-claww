@@ -595,7 +595,7 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
                   title="Fills empty slots. If you've got an API key configured, tries AI-redrawn expressions first (Gemini); otherwise falls back to a quick tinted color/mood shift of your base photo. Won't overwrite anything you've already uploaded."
                   className="ml-3 text-xs text-teal-400 hover:text-teal-300 transition-colors disabled:opacity-50 disabled:cursor-wait"
                 >
-                  {generatingVariants ? 'Generating…' : '✨ Fill gaps from base photo'}
+                  {generatingVariants ? 'Generating…' : <><Sparkles size={14} className="inline mr-1.5" />Fill gaps from base photo</>}
                 </button>
               )}
               {showEmotionSlots && (

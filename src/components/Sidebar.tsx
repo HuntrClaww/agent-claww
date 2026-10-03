@@ -1,7 +1,7 @@
 import { BrandMark } from './Brand';
 import { useState, useEffect } from 'react';
 import UserProfileModal from './UserProfileModal';
-import { X, HelpCircle } from 'lucide-react';
+import { X, HelpCircle, Settings, Plus } from 'lucide-react';
 
 interface SidebarProps {
   isGuest: boolean;
@@ -61,7 +61,7 @@ export default function Sidebar({ isGuest, isOpen, onCloseMobile, onOpenSettings
                 className="text-slate-400 hover:text-teal-400 transition-colors"
                 title="Settings"
               >
-                ⚙️
+                <Settings size={16} />
               </button>
               <button
                 onClick={onCloseMobile}
@@ -74,9 +74,10 @@ export default function Sidebar({ isGuest, isOpen, onCloseMobile, onOpenSettings
           </div>
           <button
             onClick={onNewChat}
-            className="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-500 hover:to-teal-600 text-white rounded-md py-2 transition-all mb-4 font-medium shadow-md hover:shadow-lg"
+            className="btn-3d w-full flex items-center justify-center gap-2 rounded-lg py-2.5 mb-4"
           >
-            + New Session
+            <Plus size={16} />
+            New Session
           </button>
         </div>
 
