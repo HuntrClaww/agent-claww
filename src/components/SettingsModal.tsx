@@ -243,11 +243,8 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
                     <button
                       onClick={handleClearAllCharacters}
                       disabled={characterCount === 0}
-                      className={`flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                        clearConfirm
-                          ? 'bg-red-600 hover:bg-red-500 text-white'
-                          : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-                      }`}
+                      style={{ '--user-accent': clearConfirm ? '#ef4444' : 'rgba(148,163,184,0.7)' } as React.CSSProperties}
+                      className="btn-3d flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Trash2 size={14} />
                       {clearConfirm ? 'Click again to confirm — this cannot be undone' : 'Clear all characters'}
@@ -621,7 +618,7 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
                     <button
                       onClick={handleTestAPI}
                       disabled={validationStatus === 'testing' || !apiKey.trim()}
-                      className="glass-surface disabled:opacity-50 disabled:cursor-not-allowed px-3.5 py-2 rounded-lg font-medium text-[12px] text-slate-200"
+                      className="btn-3d px-3.5 py-2 rounded-lg text-[12px]"
                     >
                       {validationStatus === 'testing' ? 'Testing...' : 'Test API Connection'}
                     </button>
@@ -785,14 +782,14 @@ export default function SettingsModal({ isOpen, onClose }: { isOpen: boolean, on
           )}
           <button 
             onClick={handleCancel}
-            className="px-4 py-2 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors"
+            className="btn-3d-outline px-4 py-2 rounded-lg"
+            style={{ '--user-accent': 'rgba(148,163,184,0.8)' } as React.CSSProperties}
           >
             Cancel
           </button>
           <button 
             onClick={handleSave}
-            className="glass-surface glow-active px-4 py-2 rounded-lg text-white font-medium"
-            style={{ background: 'var(--user-accent)' }}
+            className="btn-3d px-4 py-2 rounded-lg font-medium"
           >
             Save Settings
           </button>

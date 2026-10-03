@@ -1012,7 +1012,8 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                     <button
                       onClick={handleStopGenerating}
                       title="Stop generating"
-                      className="glass-surface bg-red-500/20 text-red-300 px-6 py-3 rounded-xl font-medium flex items-center gap-2"
+                      className="btn-3d-outline px-6 py-3 rounded-xl flex items-center gap-2"
+                      style={{ '--user-accent': '#f87171' } as React.CSSProperties}
                     >
                       <Square size={16} fill="currentColor" />
                       Stop
