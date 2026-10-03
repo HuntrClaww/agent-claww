@@ -577,3 +577,135 @@ html.motion-none .orbit-ring {
         inset 0 1px 0 rgba(255, 255, 255, calc(0.18 * var(--glass-strength))),
         0 8px 20px -6px rgba(0, 0, 0, 0.5);
 }
+
+/* ==========================================================================
+   GLOSSY 3D BUTTON SYSTEM (2026-10-01)
+   A shared class for all primary interactive buttons. Reference images
+   show buttons that read as raised, with a bright inner top highlight,
+   colored outer glow, and a pressed state that genuinely depresses.
+   Apply .btn-3d to every primary action button (Send, Create, etc).
+   .btn-3d-outline is the secondary CTA variant — same depth, no fill.
+   Both read from --user-accent so they follow the theme picker.
+   ========================================================================== */
+
+.btn-3d {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--user-accent) 80%, #fff 35%) 0%,
+        var(--user-accent) 55%,
+        color-mix(in srgb, var(--user-accent) 90%, #000 18%) 100%
+    );
+    color: #fff;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    border: 1px solid color-mix(in srgb, var(--user-accent) 70%, #fff 20%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.55),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+        0 0 14px -2px color-mix(in srgb, var(--user-accent) 70%, transparent),
+        0 4px 12px -3px rgba(0, 0, 0, 0.55),
+        0 1px 3px rgba(0, 0, 0, 0.3);
+    transition:
+        transform var(--motion-fast) var(--motion-ease),
+        box-shadow var(--motion-fast) var(--motion-ease),
+        filter var(--motion-fast) var(--motion-ease);
+    will-change: transform, box-shadow;
+    cursor: pointer;
+}
+
+/* Fixed upper-half sheen — reads as glossy without a moving sweep */
+.btn-3d::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 55%;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.28) 0%,
+        rgba(255, 255, 255, 0.05) 100%
+    );
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.btn-3d:hover:not(:disabled) {
+    filter: brightness(1.1);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.65),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+        0 0 22px -2px color-mix(in srgb, var(--user-accent) 85%, transparent),
+        0 6px 18px -3px rgba(0, 0, 0, 0.6),
+        0 2px 4px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Pressed: button sinks — shadow collapses, scale compresses */
+.btn-3d:active:not(:disabled) {
+    transform: translateY(1px) scale(0.98);
+    filter: brightness(0.95);
+    box-shadow:
+        inset 0 2px 4px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 0 8px -2px color-mix(in srgb, var(--user-accent) 50%, transparent),
+        0 2px 6px -2px rgba(0, 0, 0, 0.4);
+}
+
+.btn-3d:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: none;
+    transform: none;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        0 2px 6px -2px rgba(0, 0, 0, 0.3);
+}
+
+/* Outline variant: no fill, border + glow + depth */
+.btn-3d-outline {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--user-accent) 10%, transparent);
+    color: var(--user-accent);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    border: 1.5px solid color-mix(in srgb, var(--user-accent) 70%, transparent);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        0 0 12px -4px color-mix(in srgb, var(--user-accent) 50%, transparent),
+        0 3px 8px -3px rgba(0, 0, 0, 0.4);
+    transition:
+        transform var(--motion-fast) var(--motion-ease),
+        box-shadow var(--motion-fast) var(--motion-ease),
+        background var(--motion-fast) var(--motion-ease),
+        border-color var(--motion-fast) var(--motion-ease);
+    cursor: pointer;
+}
+.btn-3d-outline:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--user-accent) 18%, transparent);
+    border-color: var(--user-accent);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        0 0 20px -4px color-mix(in srgb, var(--user-accent) 70%, transparent),
+        0 4px 12px -3px rgba(0, 0, 0, 0.45);
+    transform: translateY(-1px);
+}
+.btn-3d-outline:active:not(:disabled) {
+    transform: translateY(1px) scale(0.98);
+    box-shadow:
+        inset 0 2px 4px rgba(0, 0, 0, 0.2),
+        0 0 8px -4px color-mix(in srgb, var(--user-accent) 40%, transparent);
+}
+
+/* Reduce-effects: flatten both variants */
+html.reduce-effects .btn-3d,
+html.reduce-effects .btn-3d-outline {
+    box-shadow: none; filter: none; transform: none;
+    transition: filter var(--motion-fast) var(--motion-ease);
+}
+html.reduce-effects .btn-3d:hover:not(:disabled) { filter: brightness(1.1); }
+html.reduce-effects .btn-3d:active:not(:disabled) { filter: brightness(0.9); }
+html.reduce-effects .btn-3d::before { display: none; }
+html.motion-none .btn-3d,
+html.motion-none .btn-3d-outline { transition: none; }

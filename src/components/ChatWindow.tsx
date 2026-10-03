@@ -1021,8 +1021,8 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                     <button
                       onClick={handleSend}
                       disabled={!inputText.trim()}
-                      style={{ background: activeThemeColor || 'var(--user-accent)' }}
-                      className="glass-surface glow-active disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3 rounded-xl font-medium disabled:hover:shadow-none"
+                      style={{ '--user-accent': activeThemeColor || 'var(--user-accent)' } as React.CSSProperties}
+                      className="btn-3d px-6 py-3 rounded-xl"
                     >
                       Send
                     </button>
