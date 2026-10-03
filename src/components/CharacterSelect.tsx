@@ -342,8 +342,8 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
               </div>
               <button
                 onClick={() => onSelect('generic')}
-                className="w-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white font-medium py-3 rounded-xl transition-colors shadow-md hover:shadow-lg"
-                style={{ boxShadow: '0 0 0 1px rgba(8,145,178,0.6), 0 0 20px -4px rgba(34,211,238,0.7)' }}
+                className="btn-3d w-full flex items-center justify-center gap-2 py-3 rounded-xl"
+                style={{ '--user-accent': '#06b6d4' } as React.CSSProperties}
               >
                 Start Generic Chat
                 <ArrowRight size={16} />
@@ -882,8 +882,8 @@ export default function CharacterSelect({ onSelect }: { onSelect: (mode: string)
             <button
               onClick={handlePersonalityStart}
               disabled={!characterName.trim() || isFetching}
-              className="mt-auto w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-slate-900 font-semibold py-3 rounded-xl transition-colors shadow-md hover:shadow-lg disabled:hover:shadow-md"
-              style={characterName.trim() ? { boxShadow: '0 0 0 1px rgba(217,119,6,0.6), 0 0 20px -4px rgba(251,191,36,0.7)' } : undefined}
+              className="btn-3d mt-auto w-full flex items-center justify-center gap-2 py-3 rounded-xl"
+              style={{ '--user-accent': '#f59e0b' } as React.CSSProperties}
             >
               {isFetching ? 'Looking up character...' : 'Lock In Character'}
               {!isFetching && <ArrowRight size={16} />}
