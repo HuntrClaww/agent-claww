@@ -709,3 +709,101 @@ html.reduce-effects .btn-3d:active:not(:disabled) { filter: brightness(0.9); }
 html.reduce-effects .btn-3d::before { display: none; }
 html.motion-none .btn-3d,
 html.motion-none .btn-3d-outline { transition: none; }
+
+/* ==========================================================================
+   MESSAGE BUBBLE SYSTEM (2026-10-01)
+   ========================================================================== */
+
+/* Fade-in-up: new messages enter from slightly below */
+@keyframes msgEnter {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.msg-enter {
+    animation: msgEnter var(--motion-base) var(--motion-ease) both;
+}
+html.motion-none .msg-enter { animation: none; }
+
+/* User bubble: accent gradient + glass sheen overlay */
+.bubble-user {
+    position: relative;
+    overflow: hidden;
+    border-radius: 18px 18px 4px 18px; /* tail bottom-right */
+    color: #fff;
+}
+.bubble-user::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        160deg,
+        rgba(255,255,255,0.22) 0%,
+        rgba(255,255,255,0.04) 55%,
+        transparent 100%
+    );
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+/* AI / character bubble: glass panel with left accent stripe */
+.bubble-ai {
+    background:
+        linear-gradient(135deg,
+            rgba(30, 41, 59, 0.72) 0%,
+            rgba(15, 23, 42, 0.60) 100%);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 18px 18px 18px 4px; /* tail bottom-left */
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.10),
+        0 4px 16px -4px rgba(0,0,0,0.45);
+}
+
+/* Citation badge — "via Fandom" pill */
+.citation-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: rgba(148,163,184,0.9);
+    margin-top: 6px;
+    backdrop-filter: blur(4px);
+}
+
+/* Emotion badge — [Happy] pill below character name */
+.emotion-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--user-accent) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--user-accent) 45%, transparent);
+    color: var(--user-accent);
+    box-shadow: 0 0 10px -3px color-mix(in srgb, var(--user-accent) 40%, transparent);
+}
+
+/* Typing indicator dots — use accent color */
+@keyframes typingBounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-5px); opacity: 1; }
+}
+.typing-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--user-accent);
+    box-shadow: 0 0 8px -1px var(--user-accent);
+    animation: typingBounce 1.2s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+html.motion-none .typing-dot { animation: none; opacity: 0.7; }

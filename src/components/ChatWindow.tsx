@@ -858,12 +858,14 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                     ? flagUnusualTokens(msg.content, flaggingAllowlist).map(t => t.token)
                     : [];
                   return (
-                  <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                    
-                    {/* Avatar */}
+                  <div key={msg.id} className={`flex gap-3 msg-enter ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+
+                    {/* Avatar — show portrait thumbnail if available */}
                     <div
-                      style={msg.role === 'user' ? { background: 'linear-gradient(135deg, var(--user-accent), var(--user-accent-secondary))' } : undefined}
-                      className={`w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 text-xs bubble-depth ${
+                      style={msg.role === 'user'
+                        ? { background: 'linear-gradient(135deg, var(--user-accent), var(--user-accent-secondary))' }
+                        : undefined}
+                      className={`w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 text-xs overflow-hidden ring-1 ring-white/10 ${
                         msg.role === 'user'
                           ? 'text-white'
                           : activeMode?.kind === 'personality'
@@ -871,49 +873,63 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
                             : 'bg-gradient-to-br from-cyan-500 to-teal-600 text-slate-900'
                       }`}
                     >
-                      {msg.role === 'user'
-                        ? 'U'
-                        : activeMode?.kind === 'personality'
-                          ? (activeMode.characterName?.[0] || 'C').toUpperCase()
-                          : (genericCharacter?.[0] || 'A').toUpperCase()}
+                      {msg.role === 'user' ? (
+                        headerAvatarUrl
+                          ? <img src={headerAvatarUrl} alt="" className="w-full h-full object-cover" />
+                          : 'U'
+                      ) : (
+                        headerAvatarUrl && msg.role === 'ai'
+                          ? <img src={headerAvatarUrl} alt="" className="w-full h-full object-cover" />
+                          : (activeMode?.kind === 'personality'
+                              ? (activeMode.characterName?.[0] || 'C').toUpperCase()
+                              : (genericCharacter?.[0] || 'A').toUpperCase())
+                      )}
                     </div>
 
-                    {/* Message Bubble - user bubbles use the app-wide
-                        accent theme (Settings > Appearance); the AI/
-                        character border uses that character's own color
-                        when set, falling back to the same app theme
-                        otherwise (e.g. Generic Mode has no character
-                        color of its own). */}
-                    <div
-                      style={
-                        msg.role === 'user'
-                          ? { background: 'linear-gradient(135deg, var(--user-accent), var(--user-accent-secondary))' }
-                          : msg.role === 'ai'
-                            ? { borderLeft: `3px solid ${activeThemeColor || 'var(--user-accent)'}` }
-                            : undefined
-                      }
-                      className={`p-4 rounded-2xl max-w-[80%] transition-all duration-200 bubble-depth ${
-                        msg.role === 'user' 
-                          ? 'text-white rounded-tr-sm' 
-                          : 'bg-gradient-to-br from-slate-800 to-slate-700 border border-slate-600 text-slate-100 rounded-tl-sm backdrop-blur-sm'
-                      }`}
-                    >
-                      <p className="leading-relaxed whitespace-pre-wrap text-sm">
-                        {renderContent(msg.content, msgFlaggedTokens, handleWordLookup)}
-                      </p>
-                      {msgFlaggedTokens.some(t => wordLookup[t]) && (
-                        <div className="text-[10px] text-amber-200/70 mt-2 pt-2 border-t border-slate-700/60 space-y-1">
-                          {msgFlaggedTokens.filter(t => wordLookup[t]).map(t => (
-                            <p key={t}>
-                              <span className="font-semibold">{t}:</span> {wordLookup[t].text}
-                            </p>
-                          ))}
-                        </div>
+                    {/* Message bubble */}
+                    <div className={`max-w-[78%] flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                      {/* Sender label (AI only) */}
+                      {msg.role === 'ai' && (
+                        <span className="text-[11px] font-semibold mb-1 pl-1"
+                          style={{ color: activeThemeColor || 'var(--user-accent)' }}>
+                          {activeMode?.kind === 'personality'
+                            ? activeMode.characterName
+                            : genericCharacter || 'AI'}
+                        </span>
                       )}
-                      {msg.citation && (
-                        <p className="text-[10px] text-slate-500 mt-2 pt-2 border-t border-slate-700/60">
-                          {msg.citation}
+
+                      <div
+                        style={
+                          msg.role === 'user'
+                            ? { background: `linear-gradient(135deg, ${activeThemeColor || 'var(--user-accent)'}, var(--user-accent-secondary))` }
+                            : { borderLeft: `3px solid ${activeThemeColor || 'var(--user-accent)'}` }
+                        }
+                        className={`p-4 bubble-depth ${
+                          msg.role === 'user'
+                            ? 'bubble-user'
+                            : 'bubble-ai text-slate-100'
+                        }`}
+                      >
+                        <p className="leading-relaxed whitespace-pre-wrap text-sm">
+                          {renderContent(msg.content, msgFlaggedTokens, handleWordLookup)}
                         </p>
+                        {msgFlaggedTokens.some(t => wordLookup[t]) && (
+                          <div className="text-[10px] text-amber-200/70 mt-2 pt-2 border-t border-slate-700/60 space-y-1">
+                            {msgFlaggedTokens.filter(t => wordLookup[t]).map(t => (
+                              <p key={t}>
+                                <span className="font-semibold">{t}:</span> {wordLookup[t].text}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Citation pill badge */}
+                      {msg.citation && (
+                        <span className="citation-badge mt-1">
+                          <Search size={9} />
+                          {msg.citation}
+                        </span>
                       )}
                     </div>
 
@@ -924,14 +940,21 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
 
                 {/* Typing Indicator */}
                 {isTyping && (
-                  <div className="flex gap-4 animate-fade-in">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center font-bold text-slate-900 shrink-0 shadow-lg text-xs">
-                      AI
+                  <div className="flex gap-3 msg-enter">
+                    <div
+                      style={{ background: `linear-gradient(135deg, ${activeThemeColor || 'var(--user-accent)'}, var(--user-accent-secondary))` }}
+                      className="w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 text-xs text-white overflow-hidden ring-1 ring-white/10"
+                    >
+                      {headerAvatarUrl
+                        ? <img src={headerAvatarUrl} alt="" className="w-full h-full object-cover" />
+                        : (activeMode?.kind === 'personality'
+                            ? (activeMode.characterName?.[0] || 'C').toUpperCase()
+                            : 'AI')}
                     </div>
-                    <div className="glass-surface p-4 rounded-2xl rounded-tl-sm flex items-center gap-1.5">
-                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce glow-neon glow-teal"></div>
-                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce glow-neon glow-teal" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-2 h-2 bg-teal-400 rounded-full animate-bounce glow-neon glow-teal" style={{ animationDelay: '0.4s' }}></div>
+                    <div className="bubble-ai p-3.5 flex items-center gap-2" style={{ minWidth: '64px' }}>
+                      <div className="typing-dot" />
+                      <div className="typing-dot" />
+                      <div className="typing-dot" />
                     </div>
                   </div>
                 )}
