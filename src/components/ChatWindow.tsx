@@ -4,7 +4,7 @@ import HelpHub from './HelpHub';
 import CharacterSelect from './CharacterSelect';
 import CharacterPortrait from './CharacterPortrait';
 import Sidebar from './Sidebar';
-import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX, Mic, MicOff, Square, Search } from 'lucide-react';
+import { Menu, AlertCircle, CheckCircle, Zap, Shuffle, Lock, Volume2, VolumeX, Mic, MicOff, Square, Search, Settings, Plus } from 'lucide-react';
 import { APIClient, detectAPIProvider, type ChatTurn } from '../lib/apiClient';
 import { fetchCharacterInfo, citationTag, type CharacterCandidate } from '../lib/characterFetch';
 import CharacterSearchModal from './CharacterSearchModal';
@@ -809,25 +809,80 @@ export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
           }} />
         ) : (
           <div className="flex-1 flex overflow-hidden">
-            {/* Character Portrait Panel - Personality Mode, desktop only */}
+            {/* Chat area + right panel wrapper */}
+            {/* Right Portrait Panel - Personality Mode, desktop only */}
             {activeMode.kind === 'personality' && (() => {
               const savedChar = activeMode.characterId ? getCharacter(activeMode.characterId) : undefined;
+              const charAccent = savedChar?.themeColor || activeThemeColor || 'var(--user-accent)';
               return (
-                <div className="hidden md:block w-64 shrink-0 relative overflow-hidden border-r border-slate-800/70">
-                  {/* Ambient glow behind the cutout, tinted with the character's
-                      theme color (falls back to teal) - the "neon sideboard"
-                      treatment agreed 2026-09-14, layered under the portrait
-                      rather than boxing it. */}
+                <div className="hidden md:flex md:order-last w-72 shrink-0 flex-col relative overflow-hidden border-l border-white/[0.06]"
+                  style={{ '--character-accent': charAccent } as React.CSSProperties}>
+                  {/* Ambient glow */}
                   <div
-                    className="absolute inset-0 opacity-25 blur-3xl pointer-events-none"
-                    style={{ background: 'radial-gradient(ellipse 70% 55% at 50% 15%, var(--character-accent, var(--user-accent)), transparent 70%)' }}
+                    className="absolute inset-0 opacity-20 blur-3xl pointer-events-none"
+                    style={{ background: `radial-gradient(ellipse 80% 50% at 50% 10%, ${charAccent}, transparent 70%)` }}
                   />
-                  <div className="relative h-full p-4">
+
+                  {/* Portrait area (top ~60%) */}
+                  <div className="relative flex-1 min-h-0 p-3 pb-0">
                     <CharacterPortrait
                       characterName={activeMode.characterName || 'Character'}
                       emotion={currentEmotion}
                       portraitUrl={savedChar ? resolvePortraitForEmotion(savedChar, currentEmotion) : undefined}
                     />
+                  </div>
+
+                  {/* Info + Quick Actions (bottom panel) */}
+                  <div className="relative p-4 pt-2 flex flex-col gap-3">
+                    {/* Mode badge */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-semibold tracking-widest uppercase"
+                        style={{ color: charAccent }}>
+                        Personality Mode
+                      </span>
+                      <div className="w-2 h-2 rounded-full animate-pulse"
+                        style={{ background: charAccent, boxShadow: `0 0 6px ${charAccent}` }} />
+                    </div>
+
+                    {/* Character name + emotion badge */}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-base font-bold text-white">
+                        {activeMode.characterName || 'Character'}
+                      </span>
+                      {currentEmotion && currentEmotion !== 'neutral' && (
+                        <span className="emotion-badge self-start capitalize">
+                          {currentEmotion}
+                        </span>
+                      )}
+                      {savedChar?.summary && (
+                        <p className="text-[11px] text-slate-400 italic mt-0.5 leading-relaxed line-clamp-2">
+                          "{savedChar.summary}"
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[10px] font-semibold tracking-wider uppercase text-slate-500">
+                        Quick Actions
+                      </span>
+                      <button
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="btn-3d-outline w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] text-left"
+                        style={{ '--user-accent': charAccent } as React.CSSProperties}
+                      >
+                        <Settings size={14} className="shrink-0" />
+                        Character Settings
+                      </button>
+                      <button
+                        onClick={handleNewChat}
+                        className="btn-3d-outline w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] text-left"
+                        style={{ '--user-accent': 'rgba(148,163,184,0.6)' } as React.CSSProperties}
+                      >
+                        <Plus size={14} className="shrink-0" />
+                        Start New Session
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
