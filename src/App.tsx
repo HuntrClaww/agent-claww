@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import Auth from './components/Auth';
 import ChatWindow from './components/ChatWindow';
+import CharacterSelect from './components/CharacterSelect';
+import HomeDashboard from './components/HomeDashboard';
+import NavSidebar, { type AppScreen } from './components/NavSidebar';
+import SettingsModal from './components/SettingsModal';
 import { applyAppearance } from './lib/appearance';
 
 function App() {
   const [sessionState, setSessionState] = useState<'loggedOut' | 'guest' | 'loggedIn'>('loggedOut');
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>('home');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [pendingChatQuery, setPendingChatQuery] = useState<string | undefined>();
 
-  // Phase 10: signal that React has mounted so the static pre-React
-  // shell (index.html) fades out instead of hard-cutting to the real
-  // UI. Removes the shell node afterward rather than just hiding it,
-  // so it doesn't sit inert in the DOM for the rest of the session.
+  // Phase 10: signal React mounted → fade out pre-React shell
   useEffect(() => {
     document.body.classList.add('app-ready');
     const shell = document.getElementById('app-shell');
@@ -18,17 +22,7 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // --- APPEARANCE ENGINE (Settings > Appearance) ---
-  // One system for mode (dark/light/OLED), accent colors, animated
-  // background, blur/saturation/contrast, glass sheen, and transition
-  // style - all applied as CSS custom properties + marker classes on
-  // <html> by lib/appearance.ts. Replaced three separate effects that
-  // each read their own localStorage key and fought over
-  // document.body.style.backgroundColor.
-  //
-  // The visual-effects opt-out below stays separate on purpose: it's an
-  // accessibility/performance escape hatch, not a style choice, and it
-  // needs to override whatever appearance settings say.
+  // Appearance engine
   useEffect(() => {
     document.title = 'StageEgo';
     const apply = () => applyAppearance();
@@ -36,16 +30,8 @@ function App() {
     window.addEventListener('profileUpdated', apply);
     return () => window.removeEventListener('profileUpdated', apply);
   }, []);
-  // -------------------------------------------------
 
-  // --- VISUAL EFFECTS TOGGLE ---
-  // Manual opt-out from the liquid-glass/neon-glow styling (see
-  // index.css), for people on older/lower-power devices where
-  // backdrop-filter is genuinely heavy. Off by default - full effects
-  // run for everyone until someone deliberately turns this on in
-  // Settings > Advanced. Reuses the same 'profileUpdated' event the
-  // theme toggle already listens for, since Settings' Save button
-  // fires it once for everything that changed.
+  // Reduce-effects toggle
   useEffect(() => {
     const applyVisualEffects = () => {
       const reduceEffects = localStorage.getItem('reduce_visual_effects') === 'true';
@@ -55,30 +41,105 @@ function App() {
     window.addEventListener('profileUpdated', applyVisualEffects);
     return () => window.removeEventListener('profileUpdated', applyVisualEffects);
   }, []);
-  // ------------------------------
 
-  // The animated background layer lives here rather than in index.html
-  // so it mounts/unmounts with React and can't outlive the app. It's
-  // fixed and z-index:-1 (see index.css), so every screen paints on top
-  // of it - which is why ChatWindow's root is transparent now.
   const background = <div id="bg-layer" aria-hidden="true" />;
 
+  // ── Auth screen (loggedOut) ─────────────────────────────────────────────
   if (sessionState === 'loggedOut') {
     return (
       <>
         {background}
-        <Auth 
-          onLogin={() => setSessionState('loggedIn')} 
-          onGuest={() => setSessionState('guest')} 
+        <Auth
+          onLogin={() => setSessionState('loggedIn')}
+          onGuest={() => setSessionState('guest')}
         />
       </>
     );
   }
 
+  const isGuest = sessionState === 'guest';
+
+  // ── Navigate to chat (optionally with a pre-filled query) ───────────────
+  const goToChat = (query?: string) => {
+    setPendingChatQuery(query);
+    setCurrentScreen('chat');
+  };
+
+  // ── Main app layout (Home → Chat → Characters → etc.) ──────────────────
   return (
     <>
       {background}
-      <ChatWindow isGuest={sessionState === 'guest'} />
+
+      {/* Global Settings overlay — available from any screen */}
+      {isSettingsOpen && (
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+        />
+      )}
+
+      {/* App shell: left nav + main content */}
+      <div className="flex h-screen overflow-hidden">
+
+        {/* Persistent left nav sidebar (desktop) + mobile bottom tabs */}
+        <NavSidebar
+          currentScreen={currentScreen}
+          onNavigate={setCurrentScreen}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          isGuest={isGuest}
+        />
+
+        {/* Main content area */}
+        <main className="flex-1 overflow-hidden flex flex-col pb-[env(safe-area-inset-bottom,0px)] md:pb-0">
+
+          {currentScreen === 'home' && (
+            <HomeDashboard
+              onNavigate={setCurrentScreen}
+              onStartChat={goToChat}
+              isGuest={isGuest}
+            />
+          )}
+
+          {currentScreen === 'chat' && (
+            <ChatWindow
+              isGuest={isGuest}
+              pendingQuery={pendingChatQuery}
+              onQueryConsumed={() => setPendingChatQuery(undefined)}
+            />
+          )}
+
+          {currentScreen === 'characters' && (
+            <CharacterSelect
+              onSelect={(_mode) => {
+                goToChat();
+              }}
+            />
+          )}
+
+          {(currentScreen === 'sessions' || currentScreen === 'voicelab') && (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
+              <div className="w-16 h-16 rounded-2xl glass-surface flex items-center justify-center mb-2">
+                <span className="text-3xl">{currentScreen === 'voicelab' ? '🎙' : '🕐'}</span>
+              </div>
+              <h2 className="text-xl font-bold text-white">
+                {currentScreen === 'voicelab' ? 'VoiceLab' : 'Sessions'}
+              </h2>
+              <p className="text-slate-400 text-sm max-w-xs">
+                {currentScreen === 'voicelab'
+                  ? 'Full voice configuration page — coming in the next UI phase.'
+                  : 'Session history page — coming in the next UI phase.'}
+              </p>
+              <button
+                onClick={() => setCurrentScreen('home')}
+                className="btn-3d px-5 py-2.5 rounded-xl text-sm"
+              >
+                Back to Home
+              </button>
+            </div>
+          )}
+
+        </main>
+      </div>
     </>
   );
 }

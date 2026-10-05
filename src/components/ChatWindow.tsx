@@ -63,8 +63,24 @@ function detectCharacterSwitch(message: string): string | null {
   return match ? match[1].trim() : null;
 }
 
-export default function ChatWindow({ isGuest }: { isGuest: boolean }) {
-  const [inputText, setInputText] = useState('');
+export default function ChatWindow({
+  isGuest,
+  pendingQuery,
+  onQueryConsumed,
+}: {
+  isGuest: boolean;
+  pendingQuery?: string;
+  onQueryConsumed?: () => void;
+}) {
+  const [inputText, setInputText] = useState(pendingQuery || '');
+  // Consume the pending query prop once — pre-fills input from dashboard chips
+  useEffect(() => {
+    if (pendingQuery) {
+      setInputText(pendingQuery);
+      onQueryConsumed?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   // Phase 10: isTyping now only controls the bouncing-dots indicator
