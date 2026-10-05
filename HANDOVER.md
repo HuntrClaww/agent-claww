@@ -839,3 +839,63 @@ first, then the visual redesign (colors, layout, icons, logo, menus,
 nav bars, everything). If you're reading this as that new session:
 start by proposing the navigational structure document, and put the
 VN-spec question above to Arthur before assuming an answer either way.
+
+---
+
+## Section 11: UI Redesign — Active Session Log (2026-10-05)
+
+**Session model:** Claude (Sonnet 4.6, Max effort) + Arthur  
+**Status:** UI redesign actively in progress — significant commits pushed this session
+
+### Commits This Session (all on main, all tested/built clean)
+
+| Commit   | What |
+|----------|------|
+| d05c4eb  | `.btn-3d` + `.btn-3d-outline` CSS system (134 lines) — global glossy button standard |
+| e9a6f62  | btn-3d applied to Auth, CharacterSelect (Guest, Start Generic, Lock In Character) |
+| 8289626  | btn-3d applied to SettingsModal (Save, Cancel, Test API, Clear Characters, Stop) |
+| bb692c5  | Icon pass — all emoji replaced with Lucide SVG icons; New Session → btn-3d + Plus icon |
+| 629b87f  | Message bubble system — glass AI bubble, user sheen, citation pill badge, fade-in-up, accent typing dots |
+| 59eff02  | Right portrait panel — Quick Actions (Character Settings, Start New Session), emotion badge, summary quote |
+| 2257f8f  | STRUCTURAL_BRIEF_UI_REDESIGN.md added to repo (12 sections + 5 new gap sections added this session) |
+| 6f5f46f  | **Major:** Top-level routing + NavSidebar + HomeDashboard (see below) |
+
+### What 6f5f46f Added (biggest change)
+
+**App.tsx rewritten:**
+- `currentScreen` state: `home | chat | characters | sessions | voicelab`
+- SettingsModal lifted to App level (accessible from any screen)
+- HomeDashboard is now the default landing screen after auth (not ChatWindow directly)
+- `goToChat(query?)` helper passes quick-chip text to ChatWindow input
+
+**NavSidebar.tsx (new):**
+- Desktop: 220px glass sidebar — logo, 6 nav items with Lucide icons, user profile card
+- Active item: accent pill + inset glow
+- Mobile: glass bottom tab bar (Chat / Characters / Voice / Settings), safe-area-aware
+
+**HomeDashboard.tsx (new):**
+- Hero panel: greeting with accent-colored user name, chat input, 4 quick-command chips
+- Recent Characters list (reads `listCharacters()` — proxies for sessions until persistence)
+- Featured Characters panel (5 popular hardcoded characters)
+- Right panel: Quick Stats 2×2 + Personality/Generic mode toggle switches
+- Footer bar: brand + 4 feature columns
+
+**ChatWindow.tsx:**
+- New optional props: `pendingQuery`, `onQueryConsumed` (back-compat — existing callers unaffected)
+
+### Remaining UI Work (priority order)
+
+1. **Landing/Hero screen** — pre-auth marketing view (Image 2 in reference) — NOT STARTED
+2. **VoiceLab page** — full standalone screen with all 11 voice controls — placeholder only
+3. **Sessions page** — searchable history list — placeholder only
+4. **Auth screen visual upgrade** — currently minimal; reference Image 2 shows a richer landing
+5. **Character cards visual polish** — CharacterSelect grid cards need glass treatment
+6. **Input bar polish** — attachment + emoji buttons visible in reference Image 3
+7. **Avatar creation tool upgrade** — Arthur flagged as "a bit blocky"
+
+### Reference Design System
+All 3 UI mockup images + HTML liquid glass reference in `/mnt/user-data/outputs/`
+Colors: cyan `#4de7ff`, purple `#9a5cff`, pink `#ef62ff`, blue `#35a9ff`
+Layout tokens: 3-col (220px sidebar | flex-1 main | 300px right), gaps 14px
+Radius tokens: 28px panels, 24px cards, 22px topbar, 18px inputs, 15px nav buttons
+
