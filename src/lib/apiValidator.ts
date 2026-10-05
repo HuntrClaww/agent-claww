@@ -78,7 +78,7 @@ async function validateAnthropicKey(apiKey: string): Promise<ValidationResult> {
       return {
         isValid: true,
         provider: 'anthropic',
-        message: '✅ Anthropic API key is valid and working.',
+        message: 'Valid: Anthropic API key is valid and working.',
       };
     }
 
@@ -86,7 +86,7 @@ async function validateAnthropicKey(apiKey: string): Promise<ValidationResult> {
       return {
         isValid: false,
         provider: 'anthropic',
-        message: '❌ Anthropic API key is invalid or expired.',
+        message: 'Error: Anthropic API key is invalid or expired.',
         error: 'Unauthorized',
       };
     }
@@ -95,7 +95,7 @@ async function validateAnthropicKey(apiKey: string): Promise<ValidationResult> {
       return {
         isValid: true,
         provider: 'anthropic',
-        message: '✅ Anthropic key is valid (rate limited). Try again in a moment.',
+        message: 'Valid: Anthropic key is valid (rate limited). Try again in a moment.',
       };
     }
 
@@ -103,14 +103,14 @@ async function validateAnthropicKey(apiKey: string): Promise<ValidationResult> {
     return {
       isValid: false,
       provider: 'anthropic',
-      message: `❌ Anthropic API Error: ${errorMsg}`,
+      message: `Error: Anthropic API Error: ${errorMsg}`,
       error: errorMsg,
     };
   } catch (err) {
     return {
       isValid: false,
       provider: 'anthropic',
-      message: '❌ Failed to connect to Anthropic API. Check your internet connection.',
+      message: 'Error: Failed to connect to Anthropic API. Check your internet connection.',
       error: err instanceof Error ? err.message : 'Network error',
     };
   }
@@ -129,7 +129,7 @@ async function validateOpenAIKey(apiKey: string): Promise<ValidationResult> {
       return {
         isValid: true,
         provider: 'openai',
-        message: '✅ OpenAI API key is valid and working.',
+        message: 'Valid: OpenAI API key is valid and working.',
       };
     }
 
@@ -137,7 +137,7 @@ async function validateOpenAIKey(apiKey: string): Promise<ValidationResult> {
       return {
         isValid: false,
         provider: 'openai',
-        message: '❌ OpenAI API key is invalid or expired.',
+        message: 'Error: OpenAI API key is invalid or expired.',
         error: 'Unauthorized',
       };
     }
@@ -146,14 +146,14 @@ async function validateOpenAIKey(apiKey: string): Promise<ValidationResult> {
     return {
       isValid: false,
       provider: 'openai',
-      message: `❌ OpenAI API Error: ${errorMsg}`,
+      message: `Error: OpenAI API Error: ${errorMsg}`,
       error: errorMsg,
     };
   } catch (err) {
     return {
       isValid: false,
       provider: 'openai',
-      message: '❌ Failed to connect to OpenAI API. Check your internet connection.',
+      message: 'Error: Failed to connect to OpenAI API. Check your internet connection.',
       error: err instanceof Error ? err.message : 'Network error',
     };
   }
@@ -176,7 +176,7 @@ async function validateOpenRouterKey(apiKey: string): Promise<ValidationResult> 
       return {
         isValid: true,
         provider: 'openrouter',
-        message: '✅ OpenRouter API key is valid and working.',
+        message: 'Valid: OpenRouter API key is valid and working.',
       };
     }
 
@@ -184,7 +184,7 @@ async function validateOpenRouterKey(apiKey: string): Promise<ValidationResult> 
       return {
         isValid: false,
         provider: 'openrouter',
-        message: '❌ OpenRouter API key is invalid or expired.',
+        message: 'Error: OpenRouter API key is invalid or expired.',
         error: 'Unauthorized',
       };
     }
@@ -193,14 +193,14 @@ async function validateOpenRouterKey(apiKey: string): Promise<ValidationResult> 
     return {
       isValid: false,
       provider: 'openrouter',
-      message: `❌ OpenRouter API Error: ${errorMsg}`,
+      message: `Error: OpenRouter API Error: ${errorMsg}`,
       error: errorMsg,
     };
   } catch (err) {
     return {
       isValid: false,
       provider: 'openrouter',
-      message: '❌ Failed to connect to OpenRouter API. Check your internet connection.',
+      message: 'Error: Failed to connect to OpenRouter API. Check your internet connection.',
       error: err instanceof Error ? err.message : 'Network error',
     };
   }
@@ -222,7 +222,7 @@ async function validateGeminiKey(apiKey: string): Promise<ValidationResult> {
       return {
         isValid: true,
         provider: 'gemini',
-        message: '✅ Google Gemini API key is valid and working.',
+        message: 'Valid: Google Gemini API key is valid and working.',
       };
     }
 
@@ -230,7 +230,7 @@ async function validateGeminiKey(apiKey: string): Promise<ValidationResult> {
       return {
         isValid: false,
         provider: 'gemini',
-        message: '❌ Google Gemini API key is invalid or expired.',
+        message: 'Error: Google Gemini API key is invalid or expired.',
         error: 'Unauthorized',
       };
     }
@@ -239,14 +239,14 @@ async function validateGeminiKey(apiKey: string): Promise<ValidationResult> {
     return {
       isValid: false,
       provider: 'gemini',
-      message: `❌ Google Gemini API Error: ${errorMsg}`,
+      message: `Error: Google Gemini API Error: ${errorMsg}`,
       error: errorMsg,
     };
   } catch (err) {
     return {
       isValid: false,
       provider: 'gemini',
-      message: '❌ Failed to connect to Google Gemini API. Check your internet connection.',
+      message: 'Error: Failed to connect to Google Gemini API. Check your internet connection.',
       error: err instanceof Error ? err.message : 'Network error',
     };
   }

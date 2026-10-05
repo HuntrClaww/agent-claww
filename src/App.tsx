@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Mic, Clock } from 'lucide-react';
 import Auth from './components/Auth';
 import ChatWindow from './components/ChatWindow';
 import CharacterSelect from './components/CharacterSelect';
@@ -118,8 +119,9 @@ function App() {
 
           {(currentScreen === 'sessions' || currentScreen === 'voicelab') && (
             <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
-              <div className="w-16 h-16 rounded-2xl glass-surface flex items-center justify-center mb-2">
-                <span className="text-3xl">{currentScreen === 'voicelab' ? '🎙' : '🕐'}</span>
+              <div className="w-16 h-16 rounded-2xl glass-surface flex items-center justify-center mb-2"
+                style={{ color: 'var(--user-accent)' }}>
+                {currentScreen === 'voicelab' ? <Mic size={32} /> : <Clock size={32} />}
               </div>
               <h2 className="text-xl font-bold text-white">
                 {currentScreen === 'voicelab' ? 'VoiceLab' : 'Sessions'}

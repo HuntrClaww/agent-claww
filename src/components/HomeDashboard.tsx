@@ -14,7 +14,7 @@ import { listCharacters, type SavedCharacter } from '../lib/characterStore';
 import {
   Star, Clock, Send, Mic, Users, Infinity,
   MessageSquare, BarChart2, ChevronRight, Zap,
-  Search,
+  Search, Shuffle, BookOpen, Lightbulb, MessageCircle,
 } from 'lucide-react';
 import type { AppScreen } from './NavSidebar';
 
@@ -26,11 +26,11 @@ const FEATURED_CHARACTERS = [
   { name: 'Hinata Hyuga',    source: 'Anime · Naruto',                quote: '"I\'m always here for you."',            color: '#a78bfa' },
 ];
 
-const QUICK_CHIPS = [
-  { label: 'Be Naruto',       icon: '🥷' },
-  { label: 'Tell me a story', icon: '💬' },
-  { label: 'Give me advice',  icon: '✦'  },
-  { label: 'Just chat',       icon: '💭' },
+const QUICK_CHIPS: { label: string; icon: React.ReactNode }[] = [
+  { label: 'Be a character',  icon: <Shuffle size={13} /> },
+  { label: 'Tell me a story', icon: <BookOpen size={13} /> },
+  { label: 'Give me advice',  icon: <Lightbulb size={13} /> },
+  { label: 'Just chat',       icon: <MessageCircle size={13} /> },
 ];
 
 interface HomeDashboardProps {
@@ -125,7 +125,7 @@ export default function HomeDashboard({ onNavigate, onStartChat, isGuest }: Home
                     onClick={() => onStartChat(chip.label)}
                     className="suggestion-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
                   >
-                    <span>{chip.icon}</span>
+                    {chip.icon}
                     {chip.label}
                   </button>
                 ))}

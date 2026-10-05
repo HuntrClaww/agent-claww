@@ -61,7 +61,7 @@ export const HELP_TOPICS: HelpTopic[] = [
       "By default a character shows one portrait no matter what they're feeling. These slots let you add different art for different emotions — when the AI's reply reads as one of those emotions, that portrait shows instead. Every slot is optional.",
     steps: [
       'Upload your own art for a specific emotion — click any slot and choose an image.',
-      '"✨ Fill gaps from base photo" — a one-click option that generates a variant for every empty slot from your existing base photo. This shifts color and tone to suggest a mood — it does NOT redraw the face or change the expression. It never overwrites a slot you\'ve filled yourself.',
+      '"Fill gaps from base photo" — a one-click option that generates a variant for every empty slot from your existing base photo. This shifts color and tone to suggest a mood — it does NOT redraw the face or change the expression. It never overwrites a slot you\'ve filled yourself.',
     ],
     note: "You can mix both — some slots with your own uploaded art, others filled by the generator, and some left blank entirely.",
     keywords: ['emotion', 'portrait', 'avatar', 'art', 'happy', 'sad', 'angry', 'expression'],
@@ -97,7 +97,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     intro:
       "A quick map of where things live, if you're not sure where to look.",
     steps: [
-      "Sidebar (left): switch or start a new session, open Settings (⚙️) or this Help (?) from the top bar.",
+      "Sidebar (left): switch or start a new session, open Settings (Settings) or this Help (?) from the top bar.",
       "Settings > Standard Assistant: set your AI provider's API key (needed for chat to work at all) — see the 'Getting an API key' topic for how.",
       "Settings > Character Management: see/delete your saved characters from one place.",
       "Character creation screen (Personality Mode, Side B): name, portrait, Voice Studio, emotion-specific art, and behavior mode are all set up here before a character is saved.",
